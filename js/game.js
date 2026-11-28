@@ -103,8 +103,8 @@
     var X = (W - total * s) / 2, cy = wordArea * 0.5 + 6;
 
     if (cfg.CARD) {
-      el('rect', { x: 16, y: 10, width: W - 32, height: wordArea, rx: 26, fill: 'rgba(0,0,0,.05)' }, board);
-      el('rect', { x: 14, y: 6, width: W - 28, height: wordArea, rx: 26, fill: 'rgba(255,255,255,.78)', stroke: '#e8e3d6', 'stroke-width': 2 }, board);
+      el('rect', { 'class': 'wcard-sh', x: 16, y: 10, width: W - 32, height: wordArea, rx: 26 }, board);
+      el('rect', { 'class': 'wcard', x: 14, y: 6, width: W - 28, height: wordArea, rx: 26 }, board);
     }
     var slots = [];
     letters.forEach(function (L, li) {
@@ -425,8 +425,8 @@
   function startGhost() {
     stopGhostEl();
     ghostEl = el('g', { id: 'ghost', opacity: 0 }, board);
-    el('circle', { r: 22, fill: 'rgba(35,33,29,.18)', stroke: 'rgba(35,33,29,.55)', 'stroke-width': 3 }, ghostEl);
-    el('circle', { r: 7, fill: 'rgba(35,33,29,.55)' }, ghostEl);
+    el('circle', { 'class': 'g1', r: 22 }, ghostEl);
+    el('circle', { 'class': 'g2', r: 7 }, ghostEl);
     ghostEl.t0 = now();
   }
   function stopGhostEl() { if (ghostEl) { ghostEl.remove(); ghostEl = null; } }
@@ -477,6 +477,22 @@
     return lines.join('\n');
   };
 
+  // 画面の大きさが変わった（iPhone のアドレスバーの出入りなど）: 今の単語を組み直し、はめた分・コンボ・記録を引き継ぐ
+  function relayout() {
+    if (!cur || busy || drag || cur.entering) return;
+    var old = cur, filled = old.slots.map(function (sl) { return sl.filled; });
+    var keep = { combo: combo, misses: old.misses, hints: old.hints, fits: old.fits, t0: old.t0, lastFit: old.lastFit };
+    buildWord(old.text, { animate: false });
+    filled.forEach(function (f, i) {
+      if (!f) return;
+      var sl = cur.slots[i]; sl.filled = true; sl.fillEl.classList.add('on');
+      var pc = cur.pieces.filter(function (p) { return !p.locked && p.type === sl.type; })[0];
+      if (pc) { pc.locked = true; pc.g.remove(); }
+    });
+    cur.misses = keep.misses; cur.hints = keep.hints; cur.fits = keep.fits; cur.t0 = keep.t0; cur.lastFit = keep.lastFit;
+    combo = keep.combo; updateCombo();
+  }
+
   // ---- 公開（flow.js・dev.js・テストから呼ぶ） ----
   function slideIn() {
     board.classList.remove('out'); board.classList.add('pre'); void board.offsetWidth; board.classList.remove('pre');
@@ -490,7 +506,7 @@
     lock: function (b) { busy = !!b; },
     cancelDrag: function () { if (drag) endDrag(true); },
     resetCombo: function () { combo = 0; updateCombo(); },
-    rebuild: function () { if (cur && !busy) buildWord(cur.text, { animate: false }); },
+    rebuild: function () { relayout(); },
     resetTutorial: function () { WP.store.set('wp.tut', '0'); tutorialActive = true; if (cur && !busy) startGhost(); },
     resetCoins: function () { WP.fx.resetCoins(); },
     clearLog: function () { WP.log.entries = []; },
@@ -505,9 +521,9 @@
 
   function init() {
     var rt;
-    window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (cur && !busy && !drag && !cur.entering) buildWord(cur.text, { animate: false }); }, 200); });
+    window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(relayout, 200); });
     // iPhone のスクロール・ピンチ・ゴムバンドを止める（開発メニューの中だけはスクロールできる）
-    document.addEventListener('touchmove', function (e) { if (!e.target.closest || !e.target.closest('#dev')) e.preventDefault(); }, { passive: false });
+    document.addEventListener('touchmove', function (e) { if (!e.target.closest || !e.target.closest('#dev, .scrollable')) e.preventDefault(); }, { passive: false });
     ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (n) { document.addEventListener(n, function (e) { e.preventDefault(); }); });
     document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     requestAnimationFrame(tick);

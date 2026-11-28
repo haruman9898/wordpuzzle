@@ -41,6 +41,12 @@
   } catch (e) { /* 壊れた保存値は無視 */ }
   WP.saveCfg = function () { WP.store.set(KEY, JSON.stringify(WP.cfg)); };
 
+  // 開発用の表示（診断表示・⚙ 開発メニュー）。URL に ?dev=1 を付けて開くとオンになり、保存される。?dev=0 でオフ
+  var dq = (location.search.match(/[?&]dev=(\w+)/) || [])[1];
+  if (dq === '1') WP.store.set('wp.dev', '1'); else if (dq === '0') WP.store.set('wp.dev', '0');
+  WP.DEV = WP.store.get('wp.dev', '0') === '1';
+  document.documentElement.classList.toggle('dev', WP.DEV);
+
   // 固定の定数
   WP.LETTER_GAP = 16;           // 文字と文字の間の余白（座標単位）
   WP.HIT_RADIUS = 30;           // パーツを掴める距離 (px)。線が細いので見た目より広く取る

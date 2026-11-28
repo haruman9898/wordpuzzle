@@ -1,7 +1,7 @@
 // iPhone 風の環境（vibrate なし）で、振動の呼び出し（方式・場面・回数）を確認する。実際の触覚は実機でしか分からない。
 const {chromium} = require('playwright');
 const {state,fitOne} = require('./lib.js');
-const URL = (process.env.URL||'http://localhost:8123')+'/index.html';
+const URL = (process.env.URL||'http://localhost:8123')+'/index.html?dev=1';
 const ok=(c,m)=>console.log((c?'PASS ':'FAIL ')+m);
 (async()=>{
   const b = await chromium.launch();

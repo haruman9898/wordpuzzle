@@ -41,21 +41,22 @@
                       ly: sr.top + sr.height * (0.38 + Math.random() * 0.35), bounces: 0, spin: Math.random() * 6, jx: jx, jy: jy, r: 15 });
     }
   }
-  // 火花: 盤面の座標 (x, y) から放射状に飛ぶ
-  function burst(x, y, color, n) {
-    var p = boardToView(x, y);
+  // 火花: 放射状に飛ぶ。burstView はビューポートの座標、burst は盤面の座標
+  function burstView(x, y, color, n) {
     n = n || 12;
     for (var i = 0; i < n && sparks.length < MAX_SPARKS; i++) {
       var a = Math.random() * Math.PI * 2, sp = 90 + Math.random() * 220;
-      sparks.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, life: 0, max: 0.45 + Math.random() * 0.3,
+      sparks.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, life: 0, max: 0.45 + Math.random() * 0.3,
                     color: color, size: 2.5 + Math.random() * 3 });
     }
   }
-  // 光の輪: 盤面の座標
-  function ring(x, y, color, r1) {
-    var p = boardToView(x, y);
-    rings.push({ x: p.x, y: p.y, life: 0, max: 0.38, color: color, r0: 8, r1: r1 || 56 });
-  }
+  function burst(x, y, color, n) { var p = boardToView(x, y); burstView(p.x, p.y, color, n); }
+  // 光の輪
+  function ringView(x, y, color, r1) { rings.push({ x: x, y: y, life: 0, max: 0.38, color: color, r0: 8, r1: r1 || 56 }); }
+  function ring(x, y, color, r1) { var p = boardToView(x, y); ringView(p.x, p.y, color, r1); }
+  // コインの増減（着せ替えの購入など）
+  function addCoins(n) { total += n; WP.store.set('wp.coins', String(total)); renderJar(); }
+  function spend(n) { if (total < n) return false; total -= n; WP.store.set('wp.coins', String(total)); renderJar(); return true; }
   function shake() { restartClass(stageEl, 'shake'); }
 
   // ---- 描画 ----
@@ -91,6 +92,7 @@
         c.x = c.fx + (c.jx - c.fx) * e; c.y = c.fy + (c.jy - c.fy) * e; c.spin += dt * 12; c.scale = 1 - 0.45 * u;
         if (u >= 1) {
           total++; WP.store.set('wp.coins', String(total)); renderJar(); restartClass(jarEl, 'pop'); WP.audio.coin();
+          if (WP.shop && WP.shop.refresh) WP.shop.refresh();
           coinList.splice(i, 1); continue;
         }
       }
@@ -118,7 +120,8 @@
   }
 
   WP.fx = {
-    resize: resize, step: step, coins: coins, burst: burst, ring: ring, shake: shake,
+    resize: resize, step: step, coins: coins, burst: burst, ring: ring, burstView: burstView, ringView: ringView, shake: shake,
+    addCoins: addCoins, spend: spend,
     renderJar: renderJar,
     coinTotal: function () { return total; },
     resetCoins: function () { total = 0; WP.store.set('wp.coins', '0'); renderJar(); },

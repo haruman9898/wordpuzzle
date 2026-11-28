@@ -102,8 +102,10 @@
     if (!layout) layout = packPieces(specs, s, sw, poolTop, poolBottom, -8); // 最後の手段: 少し重なっても置く
     var X = (W - total * s) / 2, cy = wordArea * 0.5 + 6;
 
-    el('rect', { x: 16, y: 10, width: W - 32, height: wordArea, rx: 26, fill: 'rgba(0,0,0,.05)' }, board);
-    el('rect', { x: 14, y: 6, width: W - 28, height: wordArea, rx: 26, fill: 'rgba(255,255,255,.78)', stroke: '#e8e3d6', 'stroke-width': 2 }, board);
+    if (cfg.CARD) {
+      el('rect', { x: 16, y: 10, width: W - 32, height: wordArea, rx: 26, fill: 'rgba(0,0,0,.05)' }, board);
+      el('rect', { x: 14, y: 6, width: W - 28, height: wordArea, rx: 26, fill: 'rgba(255,255,255,.78)', stroke: '#e8e3d6', 'stroke-width': 2 }, board);
+    }
     var slots = [];
     letters.forEach(function (L, li) {
       var tx = X - (L.bb.x - sw / 2 - gap / 2) * s, ty = cy - 50 * s;
@@ -117,7 +119,7 @@
                      cx: tx + s * (b.x + b.w / 2), cy: ty + s * (b.y + b.h / 2) };
         slot.slotEl = el('path', { 'class': 'slot', d: p.d, 'stroke-width': sw }, L.g);
         slot.fillEl = el('path', { 'class': 'fill', d: p.d, 'stroke-width': sw, stroke: slot.color }, L.g);
-        el('path', { 'class': 'fillhi', d: p.d, 'stroke-width': sw * 0.28, transform: 'translate(-1.6 -1.8)' }, L.g);
+        if (cfg.GLOSS) el('path', { 'class': 'fillhi', d: p.d, 'stroke-width': sw * 0.28, transform: 'translate(-1.6 -1.8)' }, L.g);
         L.slots.push(slot); slots.push(slot);
       });
     });
@@ -186,7 +188,7 @@
       p.angle = 0;
       el('path', { 'class': 'pshadow', d: p.d, 'stroke-width': sw }, p.inner);
       p.pathEl = el('path', { 'class': 'pp', d: p.d, 'stroke-width': sw, stroke: p.color }, p.inner);
-      el('path', { 'class': 'phi', d: p.d, 'stroke-width': sw * 0.28, transform: 'translate(-1.6 -1.8)' }, p.inner);
+      if (cfg.GLOSS) el('path', { 'class': 'phi', d: p.d, 'stroke-width': sw * 0.28, transform: 'translate(-1.6 -1.8)' }, p.inner);
       var len = p.pathEl.getTotalLength(), n = Math.max(2, Math.ceil(len / 4));
       p.pts = [];
       for (var i = 0; i <= n; i++) { var pt = p.pathEl.getPointAtLength(len * i / n); p.pts.push([pt.x, pt.y]); }

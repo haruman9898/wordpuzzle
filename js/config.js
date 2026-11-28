@@ -16,6 +16,8 @@
     HINT_DELAY_SEC: 5,          // 操作が止まってからヒントが震え始めるまで (秒)
     COINS_PER_WORD: 5,
     BONUS_SECONDS: 2,           // 単語を1つ完成するごとに足す制限時間（0 にもできる）          // 1単語完成で降ってくるコインの数
+    GLOSS: false,               // パーツ・文字のつや（白いハイライト線）。proto2-a では入れていたが、見た目が好まれず既定はオフ
+    CARD: true,                 // 文字枠の後ろの白いカード
     STROKE: 12,                 // 線の太さ（座標単位。承認済み = 12）
     POOL_ORIENTATION: 'matched',// 'matched' = 枠と同じ形 / 'canonical' = 型ごとの標準形
     VOLUME: 0.7,

@@ -149,3 +149,9 @@ body{font-family:ui-rounded,"SF Pro Rounded","Hiragino Maru Gothic ProN",-apple-
 #board .fill.ghost+.fillhi{opacity:.2}
 #board .slot.pulse{animation:slotpulse .6s ease-in-out infinite}
 @keyframes slotpulse{0%,100%{stroke:#d3cec1}50%{stroke:#f2a98c}}
+
+/* 振動の実験 */
+#hx{display:flex;flex-direction:column;gap:8px;position:relative}
+.xbox{display:block;padding:14px 12px;border:2px dashed #b9b3a1;border-radius:12px;background:#fff;font-size:14px;touch-action:manipulation}
+.xbox:active{background:#f3efe3}
+.xbox b{display:inline-block;min-width:1.4em;font-size:16px}

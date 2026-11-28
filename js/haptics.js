@@ -11,7 +11,8 @@
 
   // 方式: 'label-onscreen' 画面内に置いたほぼ透明な label をクリック / 'label-offscreen' 画面外の label をクリック
   //       'input' input を直接クリック / 'dispatch' クリックイベントを送る
-  WP.HAPTIC_METHODS = ['label-onscreen', 'label-offscreen', 'input', 'dispatch'];
+  //       'ondemand' 毎回 label を作って（display:none で）クリックし、すぐ消す（ios-haptics と同じ方式）
+  WP.HAPTIC_METHODS = ['label-onscreen', 'label-offscreen', 'input', 'dispatch', 'ondemand'];
 
   function removeNode() { if (label && label.parentNode) label.parentNode.removeChild(label); label = null; input = null; }
 
@@ -43,18 +44,37 @@
 
   function tick() {
     var m = WP.cfg.IOS_HAPTIC;
+    if (m === 'ondemand') {
+      var l = document.createElement('label'), i = document.createElement('input');
+      l.setAttribute('aria-hidden', 'true'); l.style.display = 'none';
+      i.type = 'checkbox'; i.setAttribute('switch', ''); l.appendChild(i);
+      document.head.appendChild(l); l.click();
+      setTimeout(function () { if (l.parentNode) l.parentNode.removeChild(l); }, 80);
+      return;
+    }
     if (m === 'input') input.click();
     else if (m === 'dispatch') label.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
     else label.click();
   }
 
-  WP.haptic = function (level) {
-    if (!WP.cfg.HAPTICS) return;
+  WP.haptic = function (level, force) {
+    if (!WP.cfg.HAPTICS && !force) return;
     try {
       if (mode === 'vibrate') navigator.vibrate(PATTERNS[level] || PATTERNS.light);
       else if (mode === 'ios-switch' && label) { var n = CLICKS[level] || 1; for (var i = 0; i < n; i++) tick(); } // 同期で発火
     } catch (e) { /* 効かなくてもエラーにしない */ }
   };
+
+  // はめた瞬間の振動。iPhone で「タッチが終わる瞬間（touchend）」のほうが効く場合に備えて、遅らせる方式も選べる
+  var pending = null;
+  WP.hapticDeferred = function (level) {
+    if (mode === 'ios-switch' && WP.cfg.IOS_HAPTIC_CTX === 'touchend') { pending = { level: level, t: Date.now() }; return; }
+    WP.haptic(level);
+  };
+  function flush() {
+    if (pending && Date.now() - pending.t < 500) { var l = pending.level; pending = null; WP.haptic(l); } else pending = null;
+  }
+  document.addEventListener('touchend', flush, true);
   WP.hapticMode = function () { return mode === 'ios-switch' ? mode + '/' + WP.cfg.IOS_HAPTIC : mode; };
   WP.hapticSetMethod = function (m) { WP.cfg.IOS_HAPTIC = m; WP.saveCfg(); if (mode === 'ios-switch') { try { make(); } catch (e) {} } };
 

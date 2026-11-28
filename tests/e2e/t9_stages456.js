@@ -60,6 +60,22 @@ async function completeWord(p){ let n=0; while(n++<24){ const st=await state(p);
   ok((await flow(p)).state==='result' && await p.evaluate(()=>WP.progress.stars(4))>=1,'stage 4 cleared via real drags -> result, stars saved ('+await p.evaluate(()=>WP.progress.stars(4))+')');
   await p.screenshot({path:OUT+'/n_result4.png'});
   ok(await p.evaluate(()=>WP.progress.unlocked(5)),'stage 5 unlocked');
+  // 7b) お邪魔パーツは、単語の中の文字そのものの形（O・P・F・D）にならない。数も足りる。標準形モードでも作れる
+  {
+    const r = await p.evaluate(()=>{ const out={bad:[], short:[], words:0, canon:null};
+      const words=[...new Set(WP.STAGES.slice(3).flatMap(st=>st.pool))];
+      WP.flow.freePlay();
+      words.forEach(w=>{ const st=WP.STAGES.slice(3).filter(s=>s.pool.includes(w)).map(s=>s.decoys); const n=Math.max(...st); out.words++;
+        for(let i=0;i<40;i++){ WP.game.show(w,{animate:false,decoys:n}); const d=WP.game.debug(); const dec=d.pieces.filter(x=>x.decoy);
+          if(dec.length!==n) out.short.push(w+':'+dec.length+'/'+n);
+          dec.forEach(x=>{ if('OPFD'.includes(x.type) && w.includes(x.type)) out.bad.push(w+':'+x.type); }); } });
+      WP.cfg.POOL_ORIENTATION='canonical'; WP.game.show('MOON',{animate:false,decoys:2}); const d=WP.game.debug(); out.canon={decoys:d.pieces.filter(x=>x.decoy).length,total:d.pieces.length,slots:d.slots.length};
+      WP.cfg.POOL_ORIENTATION='matched'; return out; });
+    ok(r.bad.length===0,'no decoy looks like a letter in its word over '+r.words+' words x 40 draws'+(r.bad.length?' '+r.bad.slice(0,5):''));
+    ok(r.short.length===0,'every draw has the full decoy count'+(r.short.length?' '+r.short.slice(0,5):''));
+    ok(r.canon.decoys===2 && r.canon.total===r.canon.slots+2,'canonical mode builds a stage-4 word with decoys ('+JSON.stringify(r.canon)+')');
+  }
+
   console.log('errors',errs); await b.close();
 
   // 8) 置き場の重なり: ステージ5・6 の単語 + お邪魔パーツで、小さい画面でも収まる

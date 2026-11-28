@@ -151,9 +151,11 @@
   }
 
   // お邪魔パーツ: そのワードに使わない型から選ぶ（どの枠にもはまらない）。形は、その型を使う別の文字の形を借りる
+  // 使わない型でも、単語の中にある文字そのものの形（O・P・F・D）になるものは除く。
+  // 見た目が正しい文字なのに、置くとミスになってしまうため（形が合えば正解、のルールに合わせる）
   function makeDecoys(letters, n) {
     var used = {}, all = ['I', 'C', 'V', 'L', 'D', 'O', 'P', 'F', 'J'], out = [];
-    letters.forEach(function (L) { L.parts.forEach(function (pt) { used[pt.t] = true; }); });
+    letters.forEach(function (L) { L.parts.forEach(function (pt) { used[pt.t] = true; }); if ('OPFD'.indexOf(L.ch) >= 0) used[L.ch] = true; });
     var free = all.filter(function (t) { return !used[t]; });
     if (!free.length) return out;
     for (var i = 0; i < n; i++) {

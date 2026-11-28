@@ -34,6 +34,8 @@
     });
     h += '<div class="row"><label>パーツの見せ方</label><select id="devOrient"><option value="matched">matched（枠と同じ形）</option><option value="canonical">canonical（型ごとの標準形）</option></select></div>';
     h += '<div class="row"><label>フリープレイの単語</label><select id="devWord"><option value="random">ランダム</option>' + WP.WORDS_ALL.map(function (w) { return '<option>' + w + '</option>'; }).join('') + '</select></div>';
+    h += '<div class="row"><label>パーツのつや</label><input type="checkbox" id="devGloss"></div>';
+    h += '<div class="row"><label>文字枠のカード</label><input type="checkbox" id="devCard"></div>';
     h += '<div class="row"><label>ミュート（全部）</label><input type="checkbox" id="devMute"></div>';
     h += '<div class="row"><label>BGM</label><input type="checkbox" id="devBgm"></div>';
     h += '<div class="row"><label>振動</label><input type="checkbox" id="devHaptics"></div>';
@@ -52,6 +54,8 @@
 
     $('#devOrient').value = cfg.POOL_ORIENTATION;
     $('#devWord').value = cfg.WORD;
+    $('#devGloss').checked = cfg.GLOSS;
+    $('#devCard').checked = cfg.CARD;
     $('#devMute').checked = cfg.MUTE;
     $('#devBgm').checked = cfg.BGM;
     $('#devHaptics').checked = cfg.HAPTICS;
@@ -88,6 +92,8 @@
   });
   $('#devOrient').addEventListener('change', function (e) { cfg.POOL_ORIENTATION = e.target.value; changed(true); });
   $('#devWord').addEventListener('change', function (e) { cfg.WORD = e.target.value; changed(false); WP.flow.freePlay(); close(); });
+  $('#devGloss').addEventListener('change', function (e) { cfg.GLOSS = e.target.checked; changed(true); });
+  $('#devCard').addEventListener('change', function (e) { cfg.CARD = e.target.checked; changed(true); });
   $('#devMute').addEventListener('change', function (e) { cfg.MUTE = e.target.checked; changed(false); WP.audio.bgmRefresh(); });
   $('#devBgm').addEventListener('change', function (e) { cfg.BGM = e.target.checked; changed(false); WP.audio.bgmRefresh(); });
   $('#devHmethod').addEventListener('change', function (e) { WP.hapticSetMethod(e.target.value); $('#devHm').textContent = WP.hapticMode(); });

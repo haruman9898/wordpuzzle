@@ -220,6 +220,7 @@
     p.inner.style.opacity = 1;
     p.g.parentNode.appendChild(p.g);
     p.g.classList.add('lifted');
+    if (cfg.HAPTIC_ON_GRAB) WP.haptic('light');
     drag = { p: p, id: e.pointerId, t0: now(), dx: p.x - pt.x, dy: p.y - pt.y, pt: pt, snap: null, wrong: false };
     updateDrag();
   });

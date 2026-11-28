@@ -20,7 +20,7 @@
 
 ## ファイル構成
 - `index.html` / `style.css` / `js/` — 手触り確認版（`config` 定数・`letters` 文字データ・`audio`・`haptics`・`game`・`dev`）
-- JS / CSS を変えたら、`index.html` の `?v=` と `WP.BUILD`（例 `proto1-a`）を全部同じ新しい値に置き換える（iPhone のキャッシュ対策）。
+- JS / CSS を変えたら、`index.html` の `?v=` と `WP.BUILD`（例 `proto1-b`）を全部同じ新しい値に置き換える（iPhone のキャッシュ対策）。
 - `tests/e2e/` — Playwright の動作確認（`README.md` 参照）
 - `.github/workflows/pages.yml` — `main` への push で GitHub Pages に公開（サイト用ファイルだけを集めて公開する）
 

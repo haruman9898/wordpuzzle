@@ -48,3 +48,9 @@ Muse が書いた仕様書 v0.1 と試作指示書に対する、ユーザーの
 - **POOL_ORIENTATION**: `matched`（枠と同じ形）と `canonical`（型ごとの標準形）の両方を実装。開発メニューで切り替える。
 - **振動**: Android などは `navigator.vibrate`、iPhone は `<input type="checkbox" switch>` のクリックを、pointerup の中で同期的に発火する（要実機確認）。
 - **キャッシュ**: iPhone の強いキャッシュ対策として、ES モジュールは使わず、`?v=BUILD` 付きの通常の script にする。ファイルを変えたら `index.html` の `proto1-a` を全て新しい値に置き換える。画面左上の BUILD で、読み込まれた版を確認できる。
+
+## 振動の調査（proto1-b、2026-11-28）
+- proto1-a の実機テストで、iPhone では振動が出なかった（ユーザー報告）。
+- iPhone の回避策（switch のクリック）を4方式に分け、開発メニューで切り替えて試せるようにした。掴んだ瞬間にも軽い振動を出す設定（`HAPTIC_ON_GRAB`）を実験として追加した（仕様書の表にはない。要否は試遊で決める）。
+- Android の Chrome は `navigator.vibrate` で動くはず（未確認）。
+- どの方式でも iPhone で出ない場合は、アプリ化（ネイティブの触覚）まで振動は見送る。

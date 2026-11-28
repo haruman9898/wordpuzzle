@@ -5,8 +5,8 @@
 
 ```
 python3 -m http.server 8123 &          # リポジトリのルートで
-cd tests/e2e && for t in t1 t2 t3 t4_layout t5_haptics t6_resize t7_shop t8_contrast; do OUT=/tmp node $t.js; done
+cd tests/e2e && for t in t1 t2 t3 t4_layout t5_haptics t6_resize t7_shop t8_contrast t9_stages456; do OUT=/tmp node $t.js; done
 ```
 
-- `t1` 1単語の通し / `t2` 間違い・入れ替え・ヒント・保存・標準形 / `t3` ステージ構造（タイマー・星・失敗・一時停止・世代のずれ・出題の範囲） / `t4_layout` パーツ置き場の重なり検査 / `t5_haptics` iPhone 風の環境で、振動の呼び出し（方式・場面・回数）を確認 / `t6_resize` 画面の大きさが変わっても、はめた分を引き継ぐ / `t7_shop` 着せ替えと `?dev=1` / `t8_contrast` 背景 × 文字の色 25 通りの読みやすさ
+- `t1` 1単語の通し / `t2` 間違い・入れ替え・ヒント・保存・標準形 / `t3` ステージ構造（タイマー・星・失敗・一時停止・世代のずれ・出題の範囲） / `t4_layout` パーツ置き場の重なり検査 / `t5_haptics` iPhone 風の環境で、振動の呼び出し（方式・場面・回数）を確認 / `t6_resize` 画面の大きさが変わっても、はめた分を引き継ぐ / `t7_shop` 着せ替えと `?dev=1` / `t8_contrast` 背景 × 文字の色 25 通りの読みやすさ / `t9_stages456` ステージ4〜6（お邪魔パーツ）
 - 手触り・振動・音の質は、このテストでは分からない（ユーザーの iPhone で確認する）。

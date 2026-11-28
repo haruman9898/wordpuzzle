@@ -21,7 +21,7 @@ exports.drag = async (p, from, to, {steps=12, release=true, holdMs=0}={}) => {
 // 1つのパーツを、同じ型の最寄りの空き枠に入れる（指は枠の中心より offsetY 下）
 exports.fitOne = async (p, offsetY=45, pick) => {
   const st = await exports.state(p);
-  const pc = st.pieces.find(x=>!x.locked && (!pick || pick(x)));
+  const pc = st.pieces.find(x=>!x.locked && !x.decoy && (!pick || pick(x)));
   if(!pc) return false;
   const slots = st.slots.filter(s=>!s.filled && s.type===pc.type);
   slots.sort((a,b)=>Math.hypot(a.x-pc.x,a.y-pc.y)-Math.hypot(b.x-pc.x,b.y-pc.y));

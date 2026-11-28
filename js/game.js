@@ -97,6 +97,8 @@
     var poolTop = wordArea + 30, poolBottom = H - safeB - 16;
     var specs = [];
     letters.forEach(function (L) { L.parts.forEach(function (pt, pi) { specs.push(pieceSpec(pt, L.boxes[pi])); }); });
+    var decoys = makeDecoys(letters, (opts && opts.decoys) || 0);   // お邪魔パーツ（置き場の分も、先に数えておく）
+    decoys.forEach(function (dc) { specs.push(dc.spec); });
     var layout = null;
     for (var guard = 0; guard < 14 && !layout; guard++) { layout = packPieces(specs, s, sw, poolTop, poolBottom, 6); if (!layout) s *= 0.95; }
     if (!layout) layout = packPieces(specs, s, sw, poolTop, poolBottom, -8); // 最後の手段: 少し重なっても置く
@@ -126,7 +128,7 @@
 
     cur = { text: text, letters: letters, slots: slots, pieces: [], s: s, sw: sw, wordArea: wordArea,
             t0: now(), lastFit: now(), fits: [], misses: 0, hints: 0, done: false,
-            orient: cfg.POOL_ORIENTATION, gen: ++buildGen, entering: false, layout: layout, poolTop: poolTop, poolBottom: poolBottom };
+            orient: cfg.POOL_ORIENTATION, gen: ++buildGen, entering: false, layout: layout, decoys: decoys, nDecoys: decoys.length, poolTop: poolTop, poolBottom: poolBottom };
     buildPool();
     combo = 0; updateCombo();
     if (opts && opts.animate) enter(cur, opts.onReady); else if (opts && opts.onReady) opts.onReady();
@@ -146,6 +148,21 @@
         setPos(p, p.hx, p.sy + (p.hy - p.sy) * easeOutBack(u));
       });
     }, function () { if (cur !== c) return; c.entering = false; if (onReady) onReady(); });
+  }
+
+  // お邪魔パーツ: そのワードに使わない型から選ぶ（どの枠にもはまらない）。形は、その型を使う別の文字の形を借りる
+  function makeDecoys(letters, n) {
+    var used = {}, all = ['I', 'C', 'V', 'L', 'D', 'O', 'P', 'F', 'J'], out = [];
+    letters.forEach(function (L) { L.parts.forEach(function (pt) { used[pt.t] = true; }); });
+    var free = all.filter(function (t) { return !used[t]; });
+    if (!free.length) return out;
+    for (var i = 0; i < n; i++) {
+      var t = free[(i + Math.floor(Math.random() * free.length)) % free.length], src = [];
+      Object.keys(WP.LETTERS).forEach(function (ch) { WP.LETTERS[ch].forEach(function (pt) { if (pt.t === t) src.push(pt); }); });
+      var part = src[Math.floor(Math.random() * src.length)];
+      out.push({ type: t, part: part, spec: pieceSpec(part, bboxOf(part.d)) });
+    }
+    return out;
   }
 
   // パーツの見た目（matched = 枠と同じ形 / canonical = 型ごとの標準形）
@@ -179,6 +196,12 @@
       return { slot: i, type: slot.type, d: sp.d, box: box, color: slot.color, locked: false,
                hx: cur.layout[i].x, hy: cur.layout[i].y,
                w: (box.w + sw) * s, h: (box.h + sw) * s, cx: box.x + box.w / 2, cy: box.y + box.h / 2 };
+    });
+    cur.decoys.forEach(function (dc, j) {
+      var box = dc.spec.box;
+      pieces.push({ slot: -1, decoy: true, type: dc.type, d: dc.spec.d, box: box, color: WP.COLORS[dc.type], locked: false,
+                    hx: cur.layout[cur.slots.length + j].x, hy: cur.layout[cur.slots.length + j].y,
+                    w: (box.w + sw) * s, h: (box.h + sw) * s, cx: box.x + box.w / 2, cy: box.y + box.h / 2 });
     });
     // 見た目の重なり順をばらす
     pieces.slice().sort(function () { return Math.random() - 0.5; }).forEach(function (p) {
@@ -372,6 +395,7 @@
     cur.letters.forEach(function (L, i) { L.g.style.animationDelay = (i * 0.12) + 's'; restartClass(L.g, 'jump'); });
     WP.audio.word();
     WP.fx.shake();
+    cur.pieces.forEach(function (p) { if (p.decoy && !p.locked) { p.inner.style.transition = 'opacity .35s'; p.inner.style.opacity = 0; } });
     var myCur = cur, cols = ['#e4572e', '#2e86ab', '#e8b100', '#6aa332', '#a23b72'];
     cur.letters.forEach(function (L, i) {
       setTimeout(function () {
@@ -482,7 +506,7 @@
     if (!cur || busy || drag || cur.entering) return;
     var old = cur, filled = old.slots.map(function (sl) { return sl.filled; });
     var keep = { combo: combo, misses: old.misses, hints: old.hints, fits: old.fits, t0: old.t0, lastFit: old.lastFit };
-    buildWord(old.text, { animate: false });
+    buildWord(old.text, { animate: false, decoys: old.nDecoys });
     filled.forEach(function (f, i) {
       if (!f) return;
       var sl = cur.slots[i]; sl.filled = true; sl.fillEl.classList.add('on');
@@ -515,7 +539,7 @@
       return { word: cur && cur.text, combo: combo, busy: busy, entering: cur && cur.entering, coins: WP.fx.coinTotal(), misses: cur && cur.misses, hints: cur && cur.hints,
                W: W, H: H, s: cur && cur.s,
                slots: cur && cur.slots.map(function (s) { return { type: s.type, x: s.cx, y: s.cy, filled: s.filled, letter: s.letter }; }),
-               pieces: cur && cur.pieces.map(function (p) { return { type: p.type, x: p.x, y: p.y, hx: p.hx, hy: p.hy, locked: p.locked, w: p.w, h: p.h, shaking: p === hintPiece }; }) };
+               pieces: cur && cur.pieces.map(function (p) { return { decoy: !!p.decoy, type: p.type, x: p.x, y: p.y, hx: p.hx, hy: p.hy, locked: p.locked, w: p.w, h: p.h, shaking: p === hintPiece }; }) };
     }
   };
 

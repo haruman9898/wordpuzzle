@@ -83,7 +83,7 @@
   function showWord() {
     var g = gen;
     setState('enter'); renderDots();
-    WP.game.show(run.words[run.idx], { animate: true, onReady: function () {
+    WP.game.show(run.words[run.idx], { animate: true, decoys: run.st.decoys || 0, onReady: function () {
       if (g !== gen || !run) return;
       if (state === 'paused') { prevState = 'play'; return; } // 一時停止中に入場が終わった: 再開した時に始める
       if (document.hidden) { // 裏に回っている間に入場が終わった: 時間は動かさず、戻った時に一時停止の画面から始める

@@ -11,7 +11,7 @@
     '--bg1': '#faf8f2', '--bg2': '#eee9dc', '--ink': '#23211d', '--sub': '#7a766c', '--slot': '#d3cec1',
     '--panel': '#ffffff', '--panel-line': '#e4e0d6', '--dot': '#d9d4c6', '--dotcur': '#b9b3a1', '--barbg': '#e6e1d4',
     '--veil': 'rgba(246,244,239,.9)', '--veil2': 'rgba(246,244,239,.97)', '--btn': '#23211d', '--btn-ink': '#ffffff',
-    '--shadow-w': 'rgba(255,255,255,.9)', '--pulse': '#f2a98c', '--wcard': 'rgba(255,255,255,.78)', '--wcard-line': '#e8e3d6', '--wcard-sh': 'rgba(0,0,0,.05)'
+    '--shadow-w': 'rgba(255,255,255,.9)', '--sil-f': 'brightness(0)', '--sil-o': '.13', '--halo': 'rgba(255,255,255,.75)', '--pulse': '#f2a98c', '--wcard': 'rgba(255,255,255,.78)', '--wcard-line': '#e8e3d6', '--wcard-sh': 'rgba(0,0,0,.05)'
   };
   function mk(o) { var r = {}, k; for (k in BASE) r[k] = BASE[k]; for (k in o) r[k] = o[k]; return r; }
 
@@ -28,7 +28,7 @@
         '--btn': '#3a2220', '--wcard': 'rgba(255,255,255,.65)', '--wcard-line': '#f3d3c6' }) },
     { id: 'night', name: 'よぞら', price: 120, vars: mk({ '--bg1': '#1b2240', '--bg2': '#0e1226', '--ink': '#f2efe6', '--sub': '#a9b0c2', '--slot': '#3b4560',
         '--panel': '#262e52', '--panel-line': '#38426b', '--dot': '#3b4560', '--dotcur': '#6f7aa3', '--barbg': '#2c3560', '--veil': 'rgba(14,18,38,.88)', '--veil2': 'rgba(14,18,38,.97)',
-        '--btn': '#f2efe6', '--btn-ink': '#14182f', '--shadow-w': 'rgba(0,0,0,.4)', '--pulse': '#e4846a', '--wcard': 'rgba(255,255,255,.07)', '--wcard-line': '#38426b', '--wcard-sh': 'rgba(0,0,0,.25)' }) }
+        '--btn': '#f2efe6', '--btn-ink': '#14182f', '--shadow-w': 'rgba(0,0,0,.4)', '--sil-f': 'brightness(0) invert(1)', '--sil-o': '.16', '--halo': 'rgba(255,255,255,.10)', '--pulse': '#e4846a', '--wcard': 'rgba(255,255,255,.07)', '--wcard-line': '#38426b', '--wcard-sh': 'rgba(0,0,0,.25)' }) }
   ];
 
   // ---- 文字の色（型ごとの色） ----

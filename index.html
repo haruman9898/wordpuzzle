@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f6f4ef">
 <title>文字パズル 試作</title>
-<link rel="stylesheet" href="style.css?v=proto3-a">
+<link rel="stylesheet" href="style.css?v=proto4-b">
 </head>
 <body>
 <div id="app">
@@ -33,6 +33,7 @@
   <main id="stage">
     <svg id="board" xmlns="http://www.w3.org/2000/svg"></svg>
     <div id="banner"></div>
+    <div id="wordPic" hidden><div class="halo"></div><img alt=""><span id="newTag" hidden>NEW!</span></div>
   </main>
   <div id="safeProbe"></div>
 </div>
@@ -44,6 +45,7 @@
     <p class="lead">パーツをはめて、単語をつくろう</p>
     <button id="btnPlay" class="big" type="button">あそぶ</button>
     <button id="btnTitleShop" class="mid" type="button">🎨 きせかえ</button>
+    <button id="btnTitleBook" class="mid" type="button">📖 ずかん</button>
     <button id="btnTitleDev" class="ghost" type="button">⚙ 開発メニュー</button>
     <p id="ver" class="ver"></p>
   </section>
@@ -51,9 +53,9 @@
   <section id="scrSelect" class="scr opaque" hidden>
     <h2 class="ttl">ステージをえらぶ</h2>
     <div id="cards" class="scrollable"></div>
+    <div class="row2"><button id="btnSelShop" class="ghost" type="button">🎨 きせかえ</button><button id="btnSelBook" class="ghost" type="button">📖 ずかん</button></div>
     <div class="selfoot">
       <button id="btnSelBack" class="ghost" type="button">← もどる</button>
-      <button id="btnSelShop" class="ghost" type="button">🎨 きせかえ</button>
       <span id="selCoins" class="coinsum"></span>
     </div>
   </section>
@@ -67,10 +69,19 @@
     <div class="selfoot" style="margin-top:0"><button id="btnShopBack" class="ghost" type="button">← もどる</button></div>
   </section>
 
+  <section id="scrBook" class="scr opaque" hidden>
+    <h2 class="ttl">ことばずかん</h2>
+    <span id="bookCount" class="coinsum"></span>
+    <div id="bookList" class="scrollable"></div>
+    <div class="selfoot" style="margin-top:0"><button id="btnBookBack" class="ghost" type="button">← もどる</button></div>
+    <div id="bookDetail" hidden><div class="bdcard"><img id="bdImg" alt=""><div id="bdWord"></div><div id="bdCount"></div><div class="bdhint">タップでとじる</div></div></div>
+  </section>
+
   <section id="scrResult" class="scr veil" hidden>
     <div class="card">
       <h2 id="resTitle">STAGE CLEAR!</h2>
       <div id="resStars"></div>
+      <div id="resPics"></div>
       <p id="resTime"></p>
       <p id="resBest"></p>
       <p id="resCoins"></p>
@@ -109,16 +120,18 @@
 <section id="dev" hidden></section>
 <div id="rotate"><p>縦向きにしてください</p></div>
 
-<script>window.WP={BUILD:'proto3-a'};</script>
-<script src="js/config.js?v=proto3-a"></script>
-<script src="js/letters.js?v=proto3-a"></script>
-<script src="js/stages.js?v=proto3-a"></script>
-<script src="js/audio.js?v=proto3-a"></script>
-<script src="js/haptics.js?v=proto3-a"></script>
-<script src="js/fx.js?v=proto3-a"></script>
-<script src="js/shop.js?v=proto3-a"></script>
-<script src="js/game.js?v=proto3-a"></script>
-<script src="js/flow.js?v=proto3-a"></script>
-<script src="js/dev.js?v=proto3-a"></script>
+<script>window.WP={BUILD:'proto4-b'};</script>
+<script src="js/config.js?v=proto4-b"></script>
+<script src="js/letters.js?v=proto4-b"></script>
+<script src="js/stages.js?v=proto4-b"></script>
+<script src="js/audio.js?v=proto4-b"></script>
+<script src="js/haptics.js?v=proto4-b"></script>
+<script src="js/fx.js?v=proto4-b"></script>
+<script src="js/shop.js?v=proto4-b"></script>
+<script src="js/pics.js?v=proto4-b"></script>
+<script src="js/book.js?v=proto4-b"></script>
+<script src="js/game.js?v=proto4-b"></script>
+<script src="js/flow.js?v=proto4-b"></script>
+<script src="js/dev.js?v=proto4-b"></script>
 </body>
 </html>

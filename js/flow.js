@@ -6,7 +6,7 @@
   var WP = window.WP, cfg = WP.cfg;
   var $ = function (s) { return document.querySelector(s); };
 
-  var scr = { title: $('#scrTitle'), select: $('#scrSelect'), shop: $('#scrShop'), result: $('#scrResult'), fail: $('#scrFail'), pause: $('#scrPause') };
+  var scr = { title: $('#scrTitle'), select: $('#scrSelect'), shop: $('#scrShop'), book: $('#scrBook'), result: $('#scrResult'), fail: $('#scrFail'), pause: $('#scrPause') };
   var strip = $('#strip'), stageLabel = $('#stageLabel'), dotsEl = $('#dots'), barFill = $('#barFill'), secsEl = $('#secs');
   var pauseBtn = $('#pauseBtn'), bannerEl = $('#banner');
 
@@ -14,6 +14,7 @@
   var state = 'boot';          // boot | title | select | intro | enter | play | celebrate | result | fail | paused | free
   var prevState = null;
   var shopFrom = 'title';      // きせかえ画面を開いた元（もどる先）
+  var bookFrom = 'title';      // ずかん画面を開いた元
   var run = null;              // プレイ中のステージの状態
   var lastWords = [];
 
@@ -64,10 +65,15 @@
     stop(); shopFrom = from || 'title'; setState('shop'); WP.shop.open(); showScreen('shop');
   }
 
+  function goBook(from) {
+    stop(); bookFrom = from || 'title'; setState('book'); WP.book.closeDetail(); WP.book.render(); showScreen('book');
+  }
+
   function startStage(id) {
     stop();
     var st = WP.STAGES[id - 1];
     var words = WP.drawWords(st, lastWords);
+    WP.pics.preload(words);                // 絵を先に読み込んでおく（完成した時に、すぐ出せるように）
     lastWords = words.slice();
     run = { st: st, words: words, idx: 0, limit: st.limit, bonus: 0, elapsed: 0, running: false, last: 0, warned: false, coins: 0 };
     var g = gen;
@@ -83,7 +89,7 @@
   function showWord() {
     var g = gen;
     setState('enter'); renderDots();
-    WP.game.show(run.words[run.idx], { animate: true, onReady: function () {
+    WP.game.show(run.words[run.idx], { animate: true, decoys: run.st.decoys || 0, onReady: function () {
       if (g !== gen || !run) return;
       if (state === 'paused') { prevState = 'play'; return; } // 一時停止中に入場が終わった: 再開した時に始める
       if (document.hidden) { // 裏に回っている間に入場が終わった: 時間は動かさず、戻った時に一時停止の画面から始める
@@ -94,11 +100,11 @@
   }
 
   // 盤面から呼ばれる: 単語が1つ完成した
-  WP.game.onWordComplete = function () {
+  WP.game.onWordComplete = function (entry) {
     if (state === 'free') { later(2400, function () { WP.game.show(WP.game.pickWord(), { animate: false }); }); return; }
     if (!run) return;
     run.elapsed += performance.now() - run.last; run.running = false; // 最後の1つをはめた瞬間に時間を止める（クリアが優先）
-    run.idx++; run.coins += cfg.COINS_PER_WORD;
+    run.idx++; run.coins += (entry && entry.coins != null) ? entry.coins : cfg.COINS_PER_WORD;
     setState('celebrate'); renderDots(); renderTime();
     if (run.idx >= run.words.length) { later(1500, showClear); return; }
     run.bonus += cfg.BONUS_SECONDS;
@@ -132,6 +138,9 @@
     $('#resTime').textContent = 'タイム ' + sec.toFixed(1) + '秒';
     $('#resBest').textContent = 'ベスト ' + '★'.repeat(Math.max(n, before)) + '☆'.repeat(3 - Math.max(n, before));
     $('#resCoins').textContent = '🪙 +' + run.coins;
+    $('#resPics').innerHTML = run.words.map(function (w) {
+      return WP.pics.has(w) ? '<img src="' + WP.pics.url(w) + '" alt="' + w + '">' : '<span class="chip seen">' + w + '</span>';
+    }).join('');
     var last = st.id >= WP.STAGES.length;
     $('#btnNext').hidden = last;
     $('#resNote').textContent = last ? 'ここまでが試作です。遊んでくれてありがとう！' : '';
@@ -186,6 +195,9 @@
   on('#btnPlay', goSelect);
   on('#btnTitleDev', function () { $('#gear').click(); });
   on('#btnSelBack', goTitle);
+  on('#btnTitleBook', function () { goBook('title'); });
+  on('#btnSelBook', function () { goBook('select'); });
+  on('#btnBookBack', function () { if (bookFrom === 'select') goSelect(); else goTitle(); });
   on('#btnTitleShop', function () { goShop('title'); });
   on('#btnSelShop', function () { goShop('select'); });
   on('#btnShopBack', function () { if (shopFrom === 'select') goSelect(); else goTitle(); });
@@ -213,7 +225,7 @@
   window.addEventListener('pagehide', onHide);
 
   WP.flow = {
-    tick: tick, goTitle: goTitle, goSelect: goSelect, goShop: goShop, startStage: startStage, freePlay: freePlay, pause: pause, resume: resume,
+    tick: tick, goTitle: goTitle, goSelect: goSelect, goShop: goShop, goBook: goBook, startStage: startStage, freePlay: freePlay, pause: pause, resume: resume,
     state: function () { return state; },
     setTimeLeft: function (sec) { if (run) { run.bonus = sec - run.limit + run.elapsed / 1000; renderTime(); } },
     debug: function () {

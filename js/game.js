@@ -162,7 +162,9 @@
     // 見た目の重なり順をばらす
     pieces.slice().sort(function () { return Math.random() - 0.5; }).forEach(function (p) {
       p.g = el('g', { 'class': 'piece' }, board);
-      p.inner = el('g', { 'class': 'pinner' }, p.g);
+      p.tilt = el('g', {}, p.g);                    // 傾きは属性で指定（CSS の transform と混ぜない）
+      p.inner = el('g', { 'class': 'pinner' }, p.tilt);
+      p.angle = 0;
       el('path', { 'class': 'pshadow', d: p.d, 'stroke-width': sw }, p.inner);
       p.pathEl = el('path', { 'class': 'pp', d: p.d, 'stroke-width': sw, stroke: p.color }, p.inner);
       var len = p.pathEl.getTotalLength(), n = Math.max(2, Math.ceil(len / 4));
@@ -171,6 +173,11 @@
       setPos(p, p.hx, p.hy);
     });
     cur.pieces = pieces;
+  }
+
+  function setAngle(p, a) {
+    p.angle = a;
+    p.tilt.setAttribute('transform', a ? 'rotate(' + a.toFixed(2) + ' ' + p.cx + ' ' + p.cy + ')' : '');
   }
 
   function setPos(p, x, y) {
@@ -241,8 +248,19 @@
     var x = d.pt.x + d.dx * (1 - ease), y = d.pt.y + d.dy * (1 - ease) - cfg.DRAG_OFFSET_Y * ease;
     x = clamp(x, 8, W - 8); y = clamp(y, 8, H - 8);
 
+    // 動いた速さに合わせて、少し傾ける（生き物のような手触り）
+    var tn = now(), dtv = Math.max(8, tn - (d.tLast || tn)), vx = d.xLast == null ? 0 : (x - d.xLast) / dtv * 1000;
+    d.tLast = tn; d.xLast = x;
+    var targetA = clamp(vx * 0.03, -13, 13);
+    setAngle(p, p.angle + (targetA - p.angle) * 0.3);
+
     var c = nearest(x, y, function (sl) { return sl.type === p.type; });
     var cand = (c.slot && c.d < cfg.SNAP_RADIUS) ? c.slot : null;
+    // 吸着範囲に近づくと、枠のほうへ少し引き寄せられる（磁石）。吸着の判定は指の位置のまま
+    if (!cand && c.slot && c.d < cfg.SNAP_RADIUS * 1.8) {
+      var pull = Math.pow(1 - c.d / (cfg.SNAP_RADIUS * 1.8), 2) * 0.45;
+      x += (c.slot.cx - x) * pull; y += (c.slot.cy - y) * pull;
+    }
     if (cand !== d.snap) {
       if (d.snap) d.snap.fillEl.classList.remove('ghost');
       d.snap = cand;
@@ -255,7 +273,7 @@
     if (wrongNow && !d.wrong) { restartClass(p.inner, 'wobble'); WP.audio.wrong(); }
     d.wrong = wrongNow;
 
-    if (cand) setPos(p, cand.cx, cand.cy); else setPos(p, x, y);
+    if (cand) { setAngle(p, 0); setPos(p, cand.cx, cand.cy); } else setPos(p, x, y);
   }
 
   function endDrag(cancel) {
@@ -273,10 +291,11 @@
   }
 
   function returnHome(p) {
-    var x0 = p.x, y0 = p.y;
+    var x0 = p.x, y0 = p.y, a0 = p.angle;
     p.anim = tween(300, function (t) {
       var e = easeOutBack(t);
       setPos(p, x0 + (p.hx - x0) * e, y0 + (p.hy - y0) * e);
+      setAngle(p, a0 * (1 - Math.min(1, t * 1.6)));
     });
   }
 
@@ -296,12 +315,20 @@
 
     WP.audio.fit(combo);
     WP.haptic(wordDone ? 'strong' : letterDone ? 'medium' : 'light'); // pointerup の中で同期的に
-    if (letterDone) { restartClass(L.g, 'bounce'); if (!wordDone) WP.audio.letter(); }
+    WP.fx.ring(slot.cx, slot.cy, slot.color, 46); WP.fx.burst(slot.cx, slot.cy, slot.color, 9);
+    if (letterDone) {
+      restartClass(L.g, 'bounce');
+      var lx = 0, ly = 0; L.slots.forEach(function (q) { lx += q.cx; ly += q.cy; });
+      WP.fx.ring(lx / L.slots.length, ly / L.slots.length, slot.color, 90); WP.fx.burst(lx / L.slots.length, ly / L.slots.length, slot.color, 10);
+      if (!wordDone) WP.audio.letter();
+    }
     if (wordDone) completeWord();
   }
 
   function updateCombo() {
     comboEl.textContent = combo >= 2 ? 'COMBO ×' + combo : '';
+    comboEl.style.fontSize = (19 + Math.min(combo, 10) * 1.3) + 'px';
+    comboEl.style.color = combo >= 8 ? '#e8a100' : combo >= 5 ? '#a23b72' : '#e4572e';
     if (combo >= 2) restartClass(comboEl, 'pop');
   }
 
@@ -322,6 +349,15 @@
     WP.log.entries.push(entry);
     cur.letters.forEach(function (L, i) { L.g.style.animationDelay = (i * 0.12) + 's'; restartClass(L.g, 'jump'); });
     WP.audio.word();
+    WP.fx.shake();
+    var myCur = cur, cols = ['#e4572e', '#2e86ab', '#e8b100', '#6aa332', '#a23b72'];
+    cur.letters.forEach(function (L, i) {
+      setTimeout(function () {
+        if (cur !== myCur) return;
+        var lx = 0, ly = 0; L.slots.forEach(function (q) { lx += q.cx; ly += q.cy; });
+        WP.fx.burst(lx / L.slots.length, ly / L.slots.length - 20, cols[i % cols.length], 12);
+      }, i * 120);
+    });
     bannerEl.textContent = perfect ? 'PERFECT!' : 'NICE!';
     restartClass(bannerEl, 'show');
     WP.fx.coins(cfg.COINS_PER_WORD);

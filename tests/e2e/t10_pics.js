@@ -19,6 +19,12 @@ const pic = p => p.evaluate(()=>{ const w=document.querySelector('#wordPic'); co
   const cov = await p.evaluate(()=>{ const pool=[...new Set(WP.STAGES.flatMap(s=>s.pool))]; return { withPic:pool.filter(w=>WP.pics.has(w)).length, noPic:pool.filter(w=>!WP.pics.has(w)), all:pool.length, stage1Pics:WP.STAGES[0].pool.filter(w=>WP.pics.has(w)).length, later:WP.STAGES.slice(1).flatMap(s=>s.pool).filter(w=>!WP.pics.has(w)) }; });
   ok(cov.withPic===28 && cov.all===40 && cov.stage1Pics===0 && cov.later.length===0,'28 of 40 words have pictures: every word in stages 2-6, none in stage 1 ('+cov.withPic+'/'+cov.all+')');
 
+  // 1b) 縦に伸びている4枚は、横に広げて見せる。ほかは、ほぼ等倍。大きさの印象をそろえる
+  const tf = await p.evaluate(()=>{ const o={}; WP.pics.words.forEach(w=>{ const m=/scale\(([\d.]+), ([\d.]+)\)/.exec(WP.pics.transformOf(w)); o[w]=[+m[1],+m[2]]; }); return o; });
+  const stretched=['SUN','EGG','BEE','MILK'];
+  ok(stretched.every(w=>tf[w][0]/tf[w][1]>1.05) && Object.keys(tf).filter(w=>!stretched.includes(w)).every(w=>Math.abs(tf[w][0]/tf[w][1]-1)<0.001),'only the 4 vertically stretched pictures are widened');
+  ok(Object.values(tf).every(v=>v[1]>=0.8 && v[1]<=1.12),'every picture is scaled within 0.8-1.12 (balanced sizes)');
+
   // 2) ステージ2: 完成すると絵がポンと出る（初めてなので NEW! とコインのボーナス）
   await p.evaluate(()=>WP.flow.startStage(2)); ok(await waitState(p,'play'),'stage 2 reaches play');
   ok((await pic(p)).hidden,'no picture while playing');
@@ -26,7 +32,7 @@ const pic = p => p.evaluate(()=>{ const w=document.querySelector('#wordPic'); co
   await completeWord(p); await p.waitForTimeout(700);
   let g = await pic(p);
   ok(!g.hidden && g.shown && g.nat===256,'picture pops when '+w1+' completes');
-  ok(g.w>=110 && g.w<=220 && g.top>=0 && g.bottom<=g.stageH && g.left>=0 && g.right<=g.stageW,'picture fits inside the stage ('+Math.round(g.w)+'px, top '+Math.round(g.top)+', bottom '+Math.round(g.bottom)+' / '+Math.round(g.stageH)+')');
+  ok(g.w>=110 && g.w<=184 && g.top>=0 && g.bottom<=g.stageH && g.left>=0 && g.right<=g.stageW,'picture fits inside the stage ('+Math.round(g.w)+'px, top '+Math.round(g.top)+', bottom '+Math.round(g.bottom)+' / '+Math.round(g.stageH)+')');
   ok(g.top >= 700*0.36*0.8,'picture sits below the word card / banner area (top='+Math.round(g.top)+')');
   ok(g.tag,'NEW! tag on the first completion');
   ok((await flow(p)).coinsRun===10,'first-time word gives COINS_PER_WORD + NEW_WORD_BONUS (10)');

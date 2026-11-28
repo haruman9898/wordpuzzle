@@ -139,7 +139,7 @@
     $('#resBest').textContent = 'ベスト ' + '★'.repeat(Math.max(n, before)) + '☆'.repeat(3 - Math.max(n, before));
     $('#resCoins').textContent = '🪙 +' + run.coins;
     $('#resPics').innerHTML = run.words.map(function (w) {
-      return WP.pics.has(w) ? '<img src="' + WP.pics.url(w) + '" alt="' + w + '">' : '<span class="chip seen">' + w + '</span>';
+      return WP.pics.has(w) ? '<img src="' + WP.pics.url(w) + '" alt="' + w + '" style="transform:' + WP.pics.transformOf(w) + '">' : '<span class="chip seen">' + w + '</span>';
     }).join('');
     var last = st.id >= WP.STAGES.length;
     $('#btnNext').hidden = last;

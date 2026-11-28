@@ -7,12 +7,14 @@
 
   // ---- 診断表示 ----
   function refreshDiag() {
-    diag.textContent = [
+    var txt = [
       WP.BUILD + '  FPS ' + WP.perf.fps + ' (min ' + WP.perf.minFps + ') worst ' + WP.perf.worstMs + 'ms',
       '振動 ' + WP.hapticMode() + ' / 音 ' + WP.audio.state() + ' / ' + window.innerWidth + 'x' + window.innerHeight + '@' + (window.devicePixelRatio || 1) + 'x'
     ].join('\n');
+    if (txt !== lastDiag) { lastDiag = txt; diag.textContent = txt; }   // 変わった時だけ書き換える（描画のやり直しを減らす）
   }
-  setInterval(refreshDiag, 500); refreshDiag();
+  var lastDiag = '';
+  if (WP.DEV) { setInterval(refreshDiag, 1000); refreshDiag(); }
 
   // ---- 開発メニュー ----
   var SLIDERS = [

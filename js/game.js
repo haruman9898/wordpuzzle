@@ -37,6 +37,39 @@
   var tutorialActive = WP.store.get('wp.tut', '0') !== '1';
   var ghostEl = null;
   WP.perf = { fps: 0, minFps: 0, worstMs: 0 };
+  // フレーム時間の記録（プレイ中と、完成の演出中を分ける）。開発用の表示がなくても、いつも記録して、端末に保存する
+  function newB() { return { n: 0, sum: 0, o33: 0, o50: 0, max: 0, s: [] }; }
+  var perfB = { play: newB(), celeb: newB() }, perfPending = null;
+  function snapB(b) {
+    var s = b.s.slice().sort(function (x, y) { return x - y; });
+    return { n: b.n, avg: b.n ? +(b.sum / b.n).toFixed(1) : 0, p95: s.length ? +s[Math.floor(s.length * 0.95)].toFixed(1) : 0, o33: b.o33, o50: b.o50, max: +b.max.toFixed(1) };
+  }
+  function recB(b, ms) { b.n++; b.sum += ms; if (ms > 33.5) b.o33++; if (ms > 50) b.o50++; if (ms > b.max) b.max = ms; if (b.s.length < 3000) b.s.push(ms); }
+  var PKEY = 'wp.perf.v1';
+  function perfLoad() { try { var a = JSON.parse(WP.store.get(PKEY, '[]') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  // 演出が終わったら（次の単語が出る時）、直前の単語の計測を確定して保存する
+  function flushPerf() {
+    if (!perfPending) return;
+    perfPending.entry.perfCeleb = snapB(perfB.celeb);
+    var a = perfLoad(); a.push({ t: Date.now(), dev: WP.DEV ? 1 : 0, word: perfPending.entry.word, play: perfPending.entry.perfPlay, celeb: perfPending.entry.perfCeleb });
+    WP.store.set(PKEY, JSON.stringify(a.slice(-80)));
+    perfPending = null; perfB.celeb = newB();
+  }
+  // 保存した記録を、1語ごとに（時刻・モード・プレイ中と演出中の平均 / p95 / 33ms超）。時間がたつにつれて重くなるかを見るため
+  WP.perfRecords = function () {
+    function hm(t) { var d = new Date(t); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }
+    function f(q) { return q ? q.avg + '/' + q.p95 + '/' + q.o33 + 'of' + q.n : '-'; }
+    return perfLoad().slice(-30).map(function (x) { return hm(x.t) + ' ' + (x.dev ? 'dev ' : '通常') + ' ' + (x.word + '     ').slice(0, 5) + ' プレイ ' + f(x.play) + ' | 演出 ' + f(x.celeb); });
+  };
+  WP.perfSummary = function () {
+    var a = perfLoad(), out = [];
+    [[0, '通常の URL'], [1, '?dev=1 の URL']].forEach(function (g) {
+      var r = a.filter(function (x) { return x.dev === g[0]; }); if (!r.length) { out.push(g[1] + ': 記録なし'); return; }
+      function agg(k) { var n = 0, sum = 0, o33 = 0, mx = 0, p = 0; r.forEach(function (x) { var q = x[k]; n += q.n; sum += q.avg * q.n; o33 += q.o33; mx = Math.max(mx, q.max); p = Math.max(p, q.p95); }); return n ? '平均 ' + (sum / n).toFixed(1) + 'ms / p95 最大 ' + p + 'ms / 33ms超 ' + (o33 / n * 100).toFixed(1) + '% / 最悪 ' + mx + 'ms' : '記録なし'; }
+      out.push(g[1] + '（' + r.length + '語）: プレイ中 ' + agg('play') + ' | 演出中 ' + agg('celeb'));
+    });
+    return out;
+  };
   WP.log = { entries: [], sessionStart: Date.now() };
 
   function now() { return performance.now(); }
@@ -397,6 +430,7 @@
     var real = !(WP.flow && WP.flow.state && WP.flow.state() === 'free');
     var rec = real ? WP.book.record(cur.text) : { first: false, count: 0 };
     entry.first = rec.first; entry.coins = cfg.COINS_PER_WORD + (rec.first ? cfg.NEW_WORD_BONUS : 0);
+    entry.perfPlay = snapB(perfB.play); perfB.play = newB(); perfPending = { entry: entry };
     WP.log.entries.push(entry);
     cur.letters.forEach(function (L, i) { L.g.style.animationDelay = (i * 0.12) + 's'; restartClass(L.g, 'jump'); });
     WP.audio.word();
@@ -486,6 +520,7 @@
   var lastT = now(), accT = 0, accN = 0, worst = 0, minFps = 999;
   function tick(ts) {
     var t = now(), dtMs = t - lastT; lastT = t;
+    if (!document.hidden && dtMs < 1000 && WP.flow && WP.flow.state) { var ph = WP.flow.state(); if (ph === 'play') recB(perfB.play, dtMs); else if (ph === 'celebrate') recB(perfB.celeb, dtMs); }
     var dt = Math.min(dtMs, 50) / 1000;
     accT += dtMs; accN++; worst = Math.max(worst, dtMs);
     if (accT >= 500) {
@@ -507,9 +542,12 @@
     lines.push('画面: ' + window.innerWidth + 'x' + window.innerHeight + ' @' + (window.devicePixelRatio || 1) + 'x');
     lines.push('振動: ' + WP.hapticMode() + ' / 音: ' + WP.audio.state() + ' / FPS: ' + WP.perf.fps + ' (最小 ' + WP.perf.minFps + ', 最悪フレーム ' + WP.perf.worstMs + 'ms)');
     lines.push('設定: ' + cfgStr);
+    WP.perfSummary().forEach(function (l) { lines.push('計測（端末に保存、いつも記録） ' + l); });
+    var pr = WP.perfRecords(); if (pr.length) { lines.push('計測の記録（古い順。平均ms/p95ms/33ms超の数of総フレーム数）:'); pr.forEach(function (l) { lines.push('  ' + l); }); }
     lines.push('コイン: ' + WP.fx.coinTotal() + ' / 完成した単語: ' + WP.log.entries.length);
     WP.log.entries.forEach(function (e, i) {
-      lines.push((i + 1) + '. ' + e.word + ' [' + e.orient + '] ' + e.parts + 'パーツ ' + (e.ms / 1000).toFixed(1) + '秒 / 平均はめ ' + e.avgFit + 'ms (最大 ' + e.maxFit + 'ms) / ミス ' + e.misses + ' / ヒント ' + e.hints + (e.perfect ? ' / PERFECT' : ''));
+      lines.push((i + 1) + '. ' + e.word + ' [' + e.orient + '] ' + e.parts + 'パーツ ' + (e.ms / 1000).toFixed(1) + '秒 / 平均はめ ' + e.avgFit + 'ms (最大 ' + e.maxFit + 'ms) / ミス ' + e.misses + ' / ヒント ' + e.hints + (e.perfect ? ' / PERFECT' : '') +
+        (e.perfPlay ? ' | 描画 平均' + e.perfPlay.avg + 'ms p95 ' + e.perfPlay.p95 + 'ms 33ms超 ' + e.perfPlay.o33 + '/' + e.perfPlay.n : '') + (e.perfCeleb ? ' 演出中 平均' + e.perfCeleb.avg + 'ms 33ms超 ' + e.perfCeleb.o33 + '/' + e.perfCeleb.n : ''));
     });
     return lines.join('\n');
   };
@@ -535,11 +573,11 @@
     board.classList.remove('out'); board.classList.add('pre'); void board.offsetWidth; board.classList.remove('pre');
   }
   WP.game = {
-    show: function (text, opts) { busy = false; WP.pics.hide(); if (opts && opts.animate) slideIn(); buildWord(text, opts); },
+    show: function (text, opts) { busy = false; WP.pics.hide(); flushPerf(); perfB.play = newB(); if (opts && opts.animate) slideIn(); buildWord(text, opts); },
     newWord: function (w) { WP.game.show(w || pickWord(), { animate: false }); },
     pickWord: pickWord,
     exit: function (cb) { board.classList.add('out'); WP.pics.hide(); setTimeout(cb, 290); },
-    clear: function () { clearBoard(); busy = false; board.classList.remove('out'); WP.pics.hide(); },
+    clear: function () { clearBoard(); busy = false; board.classList.remove('out'); WP.pics.hide(); flushPerf(); perfB.play = newB(); },
     lock: function (b) { busy = !!b; },
     cancelDrag: function () { if (drag) endDrag(true); },
     resetCombo: function () { combo = 0; updateCombo(); },

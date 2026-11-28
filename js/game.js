@@ -393,6 +393,10 @@
     var avg = cur.fits.length ? Math.round(cur.fits.reduce(function (a, b) { return a + b; }, 0) / cur.fits.length) : 0;
     var entry = { word: cur.text, orient: cur.orient, parts: cur.slots.length, ms: ms, avgFit: avg,
                   maxFit: Math.max.apply(null, cur.fits), misses: cur.misses, hints: cur.hints, perfect: perfect, fits: cur.fits.slice() };
+    // 図鑑に記録（フリープレイは、開発用なので記録しない）。初めての単語には、コインのボーナスが付く
+    var real = !(WP.flow && WP.flow.state && WP.flow.state() === 'free');
+    var rec = real ? WP.book.record(cur.text) : { first: false, count: 0 };
+    entry.first = rec.first; entry.coins = cfg.COINS_PER_WORD + (rec.first ? cfg.NEW_WORD_BONUS : 0);
     WP.log.entries.push(entry);
     cur.letters.forEach(function (L, i) { L.g.style.animationDelay = (i * 0.12) + 's'; restartClass(L.g, 'jump'); });
     WP.audio.word();
@@ -408,7 +412,14 @@
     });
     bannerEl.textContent = perfect ? 'PERFECT!' : 'NICE!';
     restartClass(bannerEl, 'show');
-    WP.fx.coins(cfg.COINS_PER_WORD);
+    WP.fx.coins(entry.coins);
+    // 絵は、文字が跳ね始めた少しあとに、空いたパーツ置き場の中央へ（「PERFECT!」の表示より下）
+    var wordNow = cur.text, popTop = Math.round(H * 0.36) + 64, popBottom = cur.poolBottom;
+    setTimeout(function () {
+      if (cur !== myCur) return;
+      var shown = WP.pics.pop(wordNow, rec.first, popTop, popBottom);
+      if (rec.first && !shown) floatText(W - 64, 40, 'NEW!');
+    }, 170);
     if (WP.game.onWordComplete) WP.game.onWordComplete(entry);
   }
 
@@ -524,11 +535,11 @@
     board.classList.remove('out'); board.classList.add('pre'); void board.offsetWidth; board.classList.remove('pre');
   }
   WP.game = {
-    show: function (text, opts) { busy = false; if (opts && opts.animate) slideIn(); buildWord(text, opts); },
+    show: function (text, opts) { busy = false; WP.pics.hide(); if (opts && opts.animate) slideIn(); buildWord(text, opts); },
     newWord: function (w) { WP.game.show(w || pickWord(), { animate: false }); },
     pickWord: pickWord,
-    exit: function (cb) { board.classList.add('out'); setTimeout(cb, 290); },
-    clear: function () { clearBoard(); busy = false; board.classList.remove('out'); },
+    exit: function (cb) { board.classList.add('out'); WP.pics.hide(); setTimeout(cb, 290); },
+    clear: function () { clearBoard(); busy = false; board.classList.remove('out'); WP.pics.hide(); },
     lock: function (b) { busy = !!b; },
     cancelDrag: function () { if (drag) endDrag(true); },
     resetCombo: function () { combo = 0; updateCombo(); },
@@ -539,7 +550,7 @@
     onWordComplete: null,
     debug: function () {
       return { word: cur && cur.text, combo: combo, busy: busy, entering: cur && cur.entering, coins: WP.fx.coinTotal(), misses: cur && cur.misses, hints: cur && cur.hints,
-               W: W, H: H, s: cur && cur.s,
+               W: W, H: H, s: cur && cur.s, poolBottom: cur && cur.poolBottom,
                slots: cur && cur.slots.map(function (s) { return { type: s.type, x: s.cx, y: s.cy, filled: s.filled, letter: s.letter }; }),
                pieces: cur && cur.pieces.map(function (p) { return { decoy: !!p.decoy, type: p.type, x: p.x, y: p.y, hx: p.hx, hy: p.hy, locked: p.locked, w: p.w, h: p.h, shaking: p === hintPiece }; }) };
     }

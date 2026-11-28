@@ -21,6 +21,7 @@
     ['HINT_DELAY_SEC', 'ヒント開始 (秒)', 2, 12, 0.5, false],
     ['COINS_PER_WORD', 'コイン / 単語', 0, 20, 1, false],
     ['BONUS_SECONDS', '単語完成ボーナス (秒)', 0, 5, 0.5, false],
+    ['NEW_WORD_BONUS', '初めての単語のコイン', 0, 20, 1, false],
     ['STROKE', '線の太さ', 8, 16, 1, true],
     ['VOLUME', '音量（効果音）', 0, 1, 0.05, false],
     ['BGM_VOL', 'BGM の音量', 0, 1, 0.05, false]
@@ -52,7 +53,7 @@
     h += '<h3>音テスト</h3><div class="btns"><button data-s="fit">はまる</button><button data-s="wrong">違う枠</button><button data-s="letter">文字完成</button><button data-s="word">単語完成</button><button data-s="coin">コイン</button><button data-s="bgmtest">BGM 試聴</button></div>';
     h += '<h3>ステージ</h3><div class="btns"><button data-st="1">ステージ1</button><button data-st="2">ステージ2</button><button data-st="3">ステージ3</button><button id="devLeft3">残り3秒にする</button></div>';
     h += '<div class="btns" style="margin-top:8px"><button id="devUnlock">全ステージ解放</button><button id="devProg">進行を消す</button><button id="devTitle">タイトルへ</button><button id="devFree">フリープレイ（タイマーなし）</button></div>';
-    h += '<h3>その他</h3><div class="btns"><button id="devTut">チュートリアルをもう一度</button><button id="devCoins">コインを0に</button><button id="devCoins100">コイン +100</button><button id="devShopReset">着せ替えを初期化</button></div>';
+    h += '<h3>その他</h3><div class="btns"><button id="devTut">チュートリアルをもう一度</button><button id="devCoins">コインを0に</button><button id="devCoins100">コイン +100</button><button id="devShopReset">着せ替えを初期化</button><button id="devBookReset">ずかんを初期化</button></div>';
     h += '<h3>プレイログ</h3><textarea id="devLog" readonly></textarea><div class="btns" style="margin-top:8px"><button class="primary" id="devCopy">ログをコピー</button><button id="devClear">ログを消す</button></div>';
     dev.innerHTML = h;
 
@@ -136,6 +137,7 @@
       case 'devCoins': WP.game.resetCoins(); break;
       case 'devCoins100': WP.fx.addCoins(100); break;
       case 'devShopReset': WP.shop.reset(); break;
+      case 'devBookReset': WP.book.reset(); break;
       case 'devLeft3': WP.flow.setTimeLeft(3); close(); WP.flow.resume(); break;
       case 'devUnlock': WP.progress.unlockAll(); break;
       case 'devProg': WP.progress.clear(); break;

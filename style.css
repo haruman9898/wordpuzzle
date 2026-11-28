@@ -155,3 +155,44 @@ body{font-family:ui-rounded,"SF Pro Rounded","Hiragino Maru Gothic ProN",-apple-
 .xbox{display:block;padding:14px 12px;border:2px dashed #b9b3a1;border-radius:12px;background:#fff;font-size:14px;touch-action:manipulation}
 .xbox:active{background:#f3efe3}
 .xbox b{display:inline-block;min-width:1.4em;font-size:16px}
+
+/* ===== proto3: テーマ（着せ替え）。色は変数にして、背景ごとに差し替える ===== */
+:root{
+  --bg1:#faf8f2; --bg2:#eee9dc; --panel:#ffffff; --panel-line:#e4e0d6; --dot:#d9d4c6; --dotcur:#b9b3a1; --barbg:#e6e1d4;
+  --veil:rgba(246,244,239,.9); --veil2:rgba(246,244,239,.97); --btn:#23211d; --btn-ink:#ffffff; --shadow-w:rgba(255,255,255,.9);
+  --pulse:#f2a98c; --wcard:rgba(255,255,255,.78); --wcard-line:#e8e3d6; --wcard-sh:rgba(0,0,0,.05);
+}
+html,body{background:linear-gradient(var(--bg1),var(--bg2)) fixed;color:var(--ink)}
+#rotate{background:var(--bg1)}
+.scr.opaque{background:linear-gradient(var(--bg1),var(--bg2))}
+.scr.veil{background:var(--veil)}
+.scr.veil.solid{background:var(--veil2)}
+.card,.cardbtn,button.mid,.xbox{background:var(--panel);color:var(--ink)}
+.cardbtn{border-color:var(--panel-line)}
+button.big{background:var(--btn);color:var(--btn-ink)}
+button.mid{border-color:var(--btn)}
+#dots i{background:var(--dot)} #dots i.cur{background:var(--dotcur)} #bar{background:var(--barbg)}
+.st{color:var(--dot)} .st.on{color:#f6c542}
+#banner,.float{text-shadow:0 3px 0 var(--shadow-w)}
+#board .wcard-sh{fill:var(--wcard-sh)}
+#board .wcard{fill:var(--wcard);stroke:var(--wcard-line);stroke-width:2}
+@keyframes slotpulse{0%,100%{stroke:var(--slot)}50%{stroke:var(--pulse)}}
+.deco span:nth-child(1){color:var(--tc-I,#e4572e)}.deco span:nth-child(2){color:var(--tc-D,#2e86ab)}.deco span:nth-child(3){color:var(--tc-V,#e8b100)}
+html:not(.dev) #diag,html:not(.dev) #gear,html:not(.dev) #btnTitleDev{display:none}
+.scrollable{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+
+/* きせかえ画面 */
+#scrShop{justify-content:flex-start;gap:10px}
+.tabs{display:flex;gap:8px}
+.tab{border:2px solid var(--panel-line);background:var(--panel);color:var(--ink);border-radius:14px;padding:8px 20px;font:inherit;font-weight:800}
+.tab.on{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
+#shopList{display:flex;flex-direction:column;gap:10px;flex:1 1 auto;min-height:0;width:min(100%,340px);padding:2px}
+.shopitem{display:grid;grid-template-columns:96px 1fr auto;align-items:center;gap:12px;background:var(--panel);border:3px solid var(--panel-line);border-radius:16px;padding:8px 12px;font:inherit;color:var(--ink);text-align:left;flex:0 0 auto}
+.shopitem.sel{border-color:#e4572e}
+.shopitem .nm{font-weight:800;font-size:16px}
+.shopitem .tag{font-size:13px;color:var(--sub);text-align:right;white-space:nowrap}
+.shopitem .tag.eq{color:#6aa332;font-weight:800}
+#shopBar{display:flex;flex-direction:column;align-items:center;gap:6px;width:min(100%,340px)}
+#shopMsg{min-height:20px;font-size:13px;color:var(--sub)}
+button.big:disabled{opacity:.4}
+#cards{max-height:calc(100dvh - 200px)}

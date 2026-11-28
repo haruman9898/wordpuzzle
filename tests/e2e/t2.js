@@ -3,7 +3,7 @@ const ok=(c,m)=>console.log((c?'PASS ':'FAIL ')+m);
 (async()=>{
   // ---- A: 間違い・入れ替え・ヒント ----
   let {b,p,errs} = await launch();
-  await p.goto(''+(process.env.URL||'http://localhost:8123')+'/index.html'); await p.waitForTimeout(400);
+  await p.goto(''+(process.env.URL||'http://localhost:8123')+'/index.html?dev=1'); await p.waitForTimeout(400);
   await p.evaluate(()=>{WP.flow.freePlay(); WP.game.newWord('CAT');}); await p.waitForTimeout(1200);
   await p.screenshot({path:(process.env.OUT||'/tmp')+'/h_ghost.png'});             // チュートリアルのゴースト
   let st = await state(p);
@@ -52,7 +52,7 @@ const ok=(c,m)=>console.log((c?'PASS ':'FAIL ')+m);
   // ---- B: localStorage が使えなくても動く ----
   ({b,p,errs} = await launch());
   await p.addInitScript(()=>{ Object.defineProperty(window,'localStorage',{get(){throw new Error('blocked');}}); });
-  await p.goto(''+(process.env.URL||'http://localhost:8123')+'/index.html'); await p.waitForTimeout(500);
+  await p.goto(''+(process.env.URL||'http://localhost:8123')+'/index.html?dev=1'); await p.waitForTimeout(500);
   ok(await p.evaluate(()=>WP.flow.state())==='title','title screen shows with throwing localStorage');
   await p.evaluate(()=>WP.flow.freePlay()); await p.waitForTimeout(200);
   st = await state(p); ok(!!st.word,'game runs with throwing localStorage');
@@ -63,7 +63,7 @@ const ok=(c,m)=>console.log((c?'PASS ':'FAIL ')+m);
   // ---- C: canonical モード + 小さい画面 375x667 ----
   ({b,p,errs} = await launch(375,667));
   await p.addInitScript(()=>{ localStorage.setItem('wp.settings.v1', JSON.stringify({POOL_ORIENTATION:'canonical'})); });
-  await p.goto(''+(process.env.URL||'http://localhost:8123')+'/index.html'); await p.waitForTimeout(400);
+  await p.goto(''+(process.env.URL||'http://localhost:8123')+'/index.html?dev=1'); await p.waitForTimeout(400);
   await p.evaluate(()=>{WP.flow.freePlay(); WP.game.newWord('MILK');}); await p.waitForTimeout(300);
   await p.screenshot({path:(process.env.OUT||'/tmp')+'/c_canon.png'});
   let k=0; while(await fitOne(p)&&k++<12){}

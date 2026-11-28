@@ -1,6 +1,6 @@
 // ステージ構造のテスト（タイトル→選択→プレイ→結果／失敗、タイマー、星、一時停止、世代のずれ、出題の範囲）
 const {launch,state,fitOne} = require('./lib.js');
-const OUT = process.env.OUT || '/tmp', URL = (process.env.URL||'http://localhost:8123')+'/index.html';
+const OUT = process.env.OUT || '/tmp', URL = (process.env.URL||'http://localhost:8123')+'/index.html?dev=1';
 const ok=(c,m)=>console.log((c?'PASS ':'FAIL ')+m);
 const flow = p => p.evaluate(()=>WP.flow.debug());
 async function waitPlay(p, ms=6000){ const t=Date.now(); while(Date.now()-t<ms){ if(await p.evaluate(()=>WP.flow.state())==='play') return true; await p.waitForTimeout(50);} return false; }

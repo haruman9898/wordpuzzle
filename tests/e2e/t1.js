@@ -1,6 +1,6 @@
 // 1単語の通し（フリープレイ）: 実際のドラッグで全パーツをはめ、完成・コイン・次の単語を確認する
 const {launch,state,fitOne} = require('./lib.js');
-const OUT = process.env.OUT || '/tmp', URL = (process.env.URL||'http://localhost:8123')+'/index.html';
+const OUT = process.env.OUT || '/tmp', URL = (process.env.URL||'http://localhost:8123')+'/index.html?dev=1';
 const ok=(c,m)=>console.log((c?'PASS ':'FAIL ')+m);
 (async()=>{
   const {b,p,errs} = await launch();

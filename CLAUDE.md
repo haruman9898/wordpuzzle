@@ -19,8 +19,9 @@
 - `localStorage` の読み書きは try/catch で守る。
 
 ## ファイル構成
-- `index.html` / `style.css` / `js/` — `config` 定数、`letters` 文字データ、`stages` ステージ・出題・星・進行の保存、`audio`、`haptics`、`fx` 演出（コイン・火花・揺れ）、`game` 盤面（ドラッグ・吸着・はめる）、`flow` 画面遷移・タイマー、`dev` 開発メニュー
-- JS / CSS を変えたら、`index.html` の `?v=` と `WP.BUILD`（例 `proto2-d`）を全部同じ新しい値に置き換える（iPhone のキャッシュ対策）。
+- `index.html` / `style.css` / `js/` — `config` 定数、`letters` 文字データ、`stages` ステージ・出題・星・進行の保存、`audio`、`haptics`、`fx` 演出（コイン・火花・揺れ）、`shop` 着せ替え（背景・文字の色）、`game` 盤面（ドラッグ・吸着・はめる）、`flow` 画面遷移・タイマー、`dev` 開発メニュー
+- 診断表示と開発メニューは、URL に `?dev=1` を付けた時だけ出る（保存される。`?dev=0` で消える）。製品版では不要。
+- JS / CSS を変えたら、`index.html` の `?v=` と `WP.BUILD`（例 `proto3-a`）を全部同じ新しい値に置き換える（iPhone のキャッシュ対策）。
 - `tests/e2e/` — Playwright の動作確認（`README.md` 参照）。時間のかかる処理は、世代番号（`gen`）を確かめてから実行する。CSS アニメーションは、`transform` 属性を持つ要素にかけない（属性が上書きされる）。
 - `.github/workflows/pages.yml` — `main` への push で GitHub Pages に公開（サイト用ファイルだけを集めて公開する）
 

@@ -6,13 +6,14 @@
   var WP = window.WP, cfg = WP.cfg;
   var $ = function (s) { return document.querySelector(s); };
 
-  var scr = { title: $('#scrTitle'), select: $('#scrSelect'), result: $('#scrResult'), fail: $('#scrFail'), pause: $('#scrPause') };
+  var scr = { title: $('#scrTitle'), select: $('#scrSelect'), shop: $('#scrShop'), result: $('#scrResult'), fail: $('#scrFail'), pause: $('#scrPause') };
   var strip = $('#strip'), stageLabel = $('#stageLabel'), dotsEl = $('#dots'), barFill = $('#barFill'), secsEl = $('#secs');
   var pauseBtn = $('#pauseBtn'), bannerEl = $('#banner');
 
   var gen = 0;                 // 世代番号。ステージの開始・終了のたびに増やす
   var state = 'boot';          // boot | title | select | intro | enter | play | celebrate | result | fail | paused | free
   var prevState = null;
+  var shopFrom = 'title';      // きせかえ画面を開いた元（もどる先）
   var run = null;              // プレイ中のステージの状態
   var lastWords = [];
 
@@ -57,6 +58,10 @@
     $('#cards').innerHTML = o;
     $('#selCoins').textContent = '🪙 ' + WP.fx.coinTotal();
     showScreen('select');
+  }
+
+  function goShop(from) {
+    stop(); shopFrom = from || 'title'; setState('shop'); WP.shop.open(); showScreen('shop');
   }
 
   function startStage(id) {
@@ -181,6 +186,9 @@
   on('#btnPlay', goSelect);
   on('#btnTitleDev', function () { $('#gear').click(); });
   on('#btnSelBack', goTitle);
+  on('#btnTitleShop', function () { goShop('title'); });
+  on('#btnSelShop', function () { goShop('select'); });
+  on('#btnShopBack', function () { if (shopFrom === 'select') goSelect(); else goTitle(); });
   $('#cards').addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('.cardbtn'); if (!b || b.disabled) return;
     WP.audio.unlock(); startStage(Number(b.getAttribute('data-id')));
@@ -205,7 +213,7 @@
   window.addEventListener('pagehide', onHide);
 
   WP.flow = {
-    tick: tick, goTitle: goTitle, goSelect: goSelect, startStage: startStage, freePlay: freePlay, pause: pause, resume: resume,
+    tick: tick, goTitle: goTitle, goSelect: goSelect, goShop: goShop, startStage: startStage, freePlay: freePlay, pause: pause, resume: resume,
     state: function () { return state; },
     setTimeLeft: function (sec) { if (run) { run.bonus = sec - run.limit + run.elapsed / 1000; renderTime(); } },
     debug: function () {

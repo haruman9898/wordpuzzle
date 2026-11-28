@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f6f4ef">
 <title>文字パズル 試作</title>
-<link rel="stylesheet" href="style.css?v=proto2-d">
+<link rel="stylesheet" href="style.css?v=proto3-a">
 </head>
 <body>
 <div id="app">
@@ -43,17 +43,28 @@
     <h1 class="logo">文字パズル<small>（仮）</small></h1>
     <p class="lead">パーツをはめて、単語をつくろう</p>
     <button id="btnPlay" class="big" type="button">あそぶ</button>
+    <button id="btnTitleShop" class="mid" type="button">🎨 きせかえ</button>
     <button id="btnTitleDev" class="ghost" type="button">⚙ 開発メニュー</button>
     <p id="ver" class="ver"></p>
   </section>
 
   <section id="scrSelect" class="scr opaque" hidden>
     <h2 class="ttl">ステージをえらぶ</h2>
-    <div id="cards"></div>
+    <div id="cards" class="scrollable"></div>
     <div class="selfoot">
       <button id="btnSelBack" class="ghost" type="button">← もどる</button>
+      <button id="btnSelShop" class="ghost" type="button">🎨 きせかえ</button>
       <span id="selCoins" class="coinsum"></span>
     </div>
+  </section>
+
+  <section id="scrShop" class="scr opaque" hidden>
+    <h2 class="ttl">きせかえ</h2>
+    <span id="shopCoins" class="coinsum"></span>
+    <div class="tabs"><button id="tabBg" class="tab on" type="button">背景</button><button id="tabPal" class="tab" type="button">文字の色</button></div>
+    <div id="shopList" class="scrollable"></div>
+    <div id="shopBar"><span id="shopMsg"></span><button id="btnShopAct" class="big" type="button">買う</button></div>
+    <div class="selfoot" style="margin-top:0"><button id="btnShopBack" class="ghost" type="button">← もどる</button></div>
   </section>
 
   <section id="scrResult" class="scr veil" hidden>
@@ -98,15 +109,16 @@
 <section id="dev" hidden></section>
 <div id="rotate"><p>縦向きにしてください</p></div>
 
-<script>window.WP={BUILD:'proto2-d'};</script>
-<script src="js/config.js?v=proto2-d"></script>
-<script src="js/letters.js?v=proto2-d"></script>
-<script src="js/stages.js?v=proto2-d"></script>
-<script src="js/audio.js?v=proto2-d"></script>
-<script src="js/haptics.js?v=proto2-d"></script>
-<script src="js/fx.js?v=proto2-d"></script>
-<script src="js/game.js?v=proto2-d"></script>
-<script src="js/flow.js?v=proto2-d"></script>
-<script src="js/dev.js?v=proto2-d"></script>
+<script>window.WP={BUILD:'proto3-a'};</script>
+<script src="js/config.js?v=proto3-a"></script>
+<script src="js/letters.js?v=proto3-a"></script>
+<script src="js/stages.js?v=proto3-a"></script>
+<script src="js/audio.js?v=proto3-a"></script>
+<script src="js/haptics.js?v=proto3-a"></script>
+<script src="js/fx.js?v=proto3-a"></script>
+<script src="js/shop.js?v=proto3-a"></script>
+<script src="js/game.js?v=proto3-a"></script>
+<script src="js/flow.js?v=proto3-a"></script>
+<script src="js/dev.js?v=proto3-a"></script>
 </body>
 </html>

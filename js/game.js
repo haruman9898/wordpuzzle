@@ -103,8 +103,8 @@
     var X = (W - total * s) / 2, cy = wordArea * 0.5 + 6;
 
     if (cfg.CARD) {
-      el('rect', { x: 16, y: 10, width: W - 32, height: wordArea, rx: 26, fill: 'rgba(0,0,0,.05)' }, board);
-      el('rect', { x: 14, y: 6, width: W - 28, height: wordArea, rx: 26, fill: 'rgba(255,255,255,.78)', stroke: '#e8e3d6', 'stroke-width': 2 }, board);
+      el('rect', { 'class': 'wcard-sh', x: 16, y: 10, width: W - 32, height: wordArea, rx: 26 }, board);
+      el('rect', { 'class': 'wcard', x: 14, y: 6, width: W - 28, height: wordArea, rx: 26 }, board);
     }
     var slots = [];
     letters.forEach(function (L, li) {
@@ -523,7 +523,7 @@
     var rt;
     window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(relayout, 200); });
     // iPhone のスクロール・ピンチ・ゴムバンドを止める（開発メニューの中だけはスクロールできる）
-    document.addEventListener('touchmove', function (e) { if (!e.target.closest || !e.target.closest('#dev')) e.preventDefault(); }, { passive: false });
+    document.addEventListener('touchmove', function (e) { if (!e.target.closest || !e.target.closest('#dev, .scrollable')) e.preventDefault(); }, { passive: false });
     ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (n) { document.addEventListener(n, function (e) { e.preventDefault(); }); });
     document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     requestAnimationFrame(tick);

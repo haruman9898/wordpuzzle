@@ -3,7 +3,7 @@ const {launch} = require('./lib.js');
 (async()=>{
   for (const [W,H] of [[390,844],[375,667],[430,932]]) {
     const {b,p,errs}=await launch(W,H);
-    await p.goto((process.env.URL||'http://localhost:8123')+'/index.html'); await p.waitForTimeout(300);
+    await p.goto((process.env.URL||'http://localhost:8123')+'/index.html?dev=1'); await p.waitForTimeout(300);
     const res = await p.evaluate(()=>{ WP.store.set('wp.tut','1'); WP.flow.freePlay(); const out=[];
       WP.WORDS_ALL.forEach(w=>{ let maxOv=0, oob=0, minS=9, maxS=0;
         for(let i=0;i<25;i++){ WP.game.newWord(w); const d=WP.game.debug(); minS=Math.min(minS,d.s); maxS=Math.max(maxS,d.s);

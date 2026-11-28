@@ -425,8 +425,8 @@
   function startGhost() {
     stopGhostEl();
     ghostEl = el('g', { id: 'ghost', opacity: 0 }, board);
-    el('circle', { r: 22, fill: 'rgba(35,33,29,.18)', stroke: 'rgba(35,33,29,.55)', 'stroke-width': 3 }, ghostEl);
-    el('circle', { r: 7, fill: 'rgba(35,33,29,.55)' }, ghostEl);
+    el('circle', { 'class': 'g1', r: 22 }, ghostEl);
+    el('circle', { 'class': 'g2', r: 7 }, ghostEl);
     ghostEl.t0 = now();
   }
   function stopGhostEl() { if (ghostEl) { ghostEl.remove(); ghostEl = null; } }

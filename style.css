@@ -196,3 +196,5 @@ html:not(.dev) #diag,html:not(.dev) #gear,html:not(.dev) #btnTitleDev{display:no
 #shopMsg{min-height:20px;font-size:13px;color:var(--sub)}
 button.big:disabled{opacity:.4}
 #cards{max-height:calc(100dvh - 200px)}
+#ghost .g1{fill:var(--ink);fill-opacity:.15;stroke:var(--ink);stroke-opacity:.55;stroke-width:3}
+#ghost .g2{fill:var(--ink);fill-opacity:.55}

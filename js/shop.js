@@ -60,32 +60,69 @@
   var S = load();
   function save() { WP.store.set(KEY, JSON.stringify(S)); }
 
+  // ---- 色の調整 ----
+  // どの背景 × 文字色の組み合わせでも、承認済みの「ふつう」×「クリーム」より読みにくくならないように、明るさを自動で調整する。
+  // 見る点は2つ: 背景に対して見えるか（置き場のパーツ）、空の枠と区別できるか（はめた文字）。
+  function hex2rgb(h) { var n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+  function rgb2hex(r) { return '#' + r.map(function (v) { return ('0' + Math.round(Math.max(0, Math.min(255, v))).toString(16)).slice(-2); }).join(''); }
+  function lin(c) { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+  function lum(h) { var r = hex2rgb(h); return 0.2126 * lin(r[0]) + 0.7152 * lin(r[1]) + 0.0722 * lin(r[2]); }
+  function cr(a, b) { var A = lum(a), B = lum(b); return (Math.max(A, B) + 0.05) / (Math.min(A, B) + 0.05); }
+  function rgb2hsl(r) { r = r.map(function (v) { return v / 255; }); var mx = Math.max(r[0], r[1], r[2]), mn = Math.min(r[0], r[1], r[2]), l = (mx + mn) / 2, h = 0, s = 0, d = mx - mn;
+    if (d) { s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); h = mx === r[0] ? (r[1] - r[2]) / d + (r[1] < r[2] ? 6 : 0) : mx === r[1] ? (r[2] - r[0]) / d + 2 : (r[0] - r[1]) / d + 4; h /= 6; } return [h, s, l]; }
+  function hsl2rgb(c) { var h = c[0], s = c[1], l = c[2]; function f(p, q, t) { if (t < 0) t += 1; if (t > 1) t -= 1; return t < 1 / 6 ? p + (q - p) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p; }
+    if (!s) return [l * 255, l * 255, l * 255]; var q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q; return [f(p, q, h + 1 / 3) * 255, f(p, q, h) * 255, f(p, q, h - 1 / 3) * 255]; }
+
+  function worst(bg, colors) {
+    var wb = 99, ws = 99;
+    Object.keys(colors).forEach(function (k) {
+      wb = Math.min(wb, cr(colors[k], bg.vars['--bg1']), cr(colors[k], bg.vars['--bg2']));
+      ws = Math.min(ws, cr(colors[k], bg.vars['--slot']));
+    });
+    return { bg: wb, slot: ws };
+  }
+  var FLOOR = worst(BG[0], PAL[0].colors); // 基準 = 承認済みの組み合わせの、いちばん悪い値
+
+  function fitColor(hex, bg) {
+    var hsl = rgb2hsl(hex2rgb(hex)), dark = (lum(bg.vars['--bg1']) + lum(bg.vars['--bg2'])) / 2 > 0.3 ? -1 : 1;
+    function okc(h) { return Math.min(cr(h, bg.vars['--bg1']), cr(h, bg.vars['--bg2'])) >= FLOOR.bg - 0.005 && cr(h, bg.vars['--slot']) >= FLOOR.slot - 0.005; }
+    var h = hex;
+    for (var i = 0; i < 40 && !okc(h); i++) { hsl[2] = Math.max(0.04, Math.min(0.96, hsl[2] + dark * 0.02)); h = rgb2hex(hsl2rgb(hsl)); }
+    return h;
+  }
+  function effective(palId, bgId) {
+    var p = find('pal', palId), bg = find('bg', bgId), o = {};
+    Object.keys(p.colors).forEach(function (k) { o[k] = fitColor(p.colors[k], bg); });
+    return o;
+  }
+
   // ---- 反映 ----
   function applyBg(id) {
     var t = find('bg', id), root = document.documentElement, k;
     for (k in t.vars) root.style.setProperty(k, t.vars[k]);
     var m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', t.vars['--bg1']);
   }
-  function applyPal(id) {
-    var p = find('pal', id), root = document.documentElement;
-    WP.COLORS = {}; Object.keys(p.colors).forEach(function (k) { WP.COLORS[k] = p.colors[k]; root.style.setProperty('--tc-' + k, p.colors[k]); });
+  // 文字の色は、今の背景に合わせて調整した色を使う（背景が変わったら、選び直す）
+  function applyPal(palId, bgId) {
+    var root = document.documentElement, c = effective(palId, bgId);
+    WP.COLORS = {}; Object.keys(c).forEach(function (k) { WP.COLORS[k] = c[k]; root.style.setProperty('--tc-' + k, c[k]); });
   }
-  function applyAll() { applyBg(S.eq.bg); applyPal(S.eq.pal); }
+  function applyAll() { applyBg(S.eq.bg); applyPal(S.eq.pal, S.eq.bg); }
 
   // ---- 画面 ----
   var tab = 'bg', sel = { bg: null, pal: null };
   var SW = 'fill="none" stroke-linecap="round" stroke-linejoin="round"';
 
   function previewBg(t, i) {
-    var v = t.vars, A = WP.LETTERS.A, B = WP.LETTERS.B, std = PAL[0].colors;
+    var v = t.vars, A = WP.LETTERS.A, B = WP.LETTERS.B, std = effective(S.eq.pal, t.id);
     return '<svg viewBox="0 0 96 64" width="96" height="64"><defs><linearGradient id="bgp' + i + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + v['--bg1'] + '"/><stop offset="1" stop-color="' + v['--bg2'] + '"/></linearGradient></defs>' +
       '<rect x="1.5" y="1.5" width="93" height="61" rx="12" fill="url(#bgp' + i + ')" stroke="' + v['--panel-line'] + '" stroke-width="2"/>' +
       '<g transform="translate(14 9) scale(.46)">' + A.map(function (p) { return '<path d="' + p.d + '" ' + SW + ' stroke="' + std[p.t] + '" stroke-width="12"/>'; }).join('') + '</g>' +
       '<g transform="translate(52 9) scale(.46)">' + B.map(function (p) { return '<path d="' + p.d + '" ' + SW + ' stroke="' + v['--slot'] + '" stroke-width="12"/>'; }).join('') + '</g></svg>';
   }
   function previewPal(p) {
-    var types = ['I', 'V', 'C', 'L', 'D'], o = '<svg viewBox="0 0 96 64" width="96" height="64">';
-    types.forEach(function (t, i) { o += '<g transform="translate(' + (1 + i * 19) + ' 14) scale(.34)"><path d="' + WP.CANON[t] + '" ' + SW + ' stroke="' + p.colors[t] + '" stroke-width="13"/></g>'; });
+    var types = ['I', 'V', 'C', 'L', 'D'], o = '<svg viewBox="0 0 96 64" width="96" height="64">', ec = effective(p.id, S.eq.bg);
+    types.forEach(function (t, i) { o += '<g transform="translate(' + (1 + i * 19) + ' 14) scale(.34)"><path d="' + WP.CANON[t] + '" ' + SW + ' stroke="' + ec[t] + '" stroke-width="13"/></g>'; });
     return o + '</svg>';
   }
 
@@ -116,7 +153,7 @@
       WP.audio.coin(); WP.fx.ringView(r.left + r.width / 2, r.top + r.height / 2, '#f6c542', 90); WP.fx.burstView(r.left + r.width / 2, r.top + r.height / 2, '#f6c542', 14);
     } else { WP.audio.star(1); }
     S.eq[tab] = it.id; save();
-    if (tab === 'bg') applyBg(it.id); else applyPal(it.id);
+    if (tab === 'bg') { applyBg(it.id); applyPal(S.eq.pal, it.id); } else applyPal(it.id, S.eq.bg);
     render();
   }
 
@@ -131,6 +168,9 @@
   WP.shop = {
     open: function () { tab = 'bg'; sel.bg = S.eq.bg; sel.pal = S.eq.pal; render(); },
     state: function () { return JSON.parse(JSON.stringify(S)); },
+    effective: effective, floor: function () { return FLOOR; },
+    refresh: function () { var el = $('#scrShop'); if (el && !el.hidden) render(); },
+    data: function () { return { bg: BG.map(function (i) { return { id: i.id, vars: i.vars }; }), pal: PAL.map(function (i) { return { id: i.id, colors: i.colors }; }) }; },
     items: function () { return { bg: BG.map(function (i) { return i.id; }), pal: PAL.map(function (i) { return i.id; }) }; },
     reset: function () { WP.store.set(KEY, '{}'); S = load(); applyAll(); render(); }
   };

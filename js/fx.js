@@ -92,6 +92,7 @@
         c.x = c.fx + (c.jx - c.fx) * e; c.y = c.fy + (c.jy - c.fy) * e; c.spin += dt * 12; c.scale = 1 - 0.45 * u;
         if (u >= 1) {
           total++; WP.store.set('wp.coins', String(total)); renderJar(); restartClass(jarEl, 'pop'); WP.audio.coin();
+          if (WP.shop && WP.shop.refresh) WP.shop.refresh();
           coinList.splice(i, 1); continue;
         }
       }

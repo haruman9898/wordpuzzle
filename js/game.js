@@ -32,7 +32,7 @@
   var drag = null;
   var combo = 0;
   var busy = false;        // 単語完成の演出中
-  var hintTimer = null, hintPiece = null;
+  var hintTimer = null, hintPiece = null, hintSlot = null;
   var lastWord = null;
   var tutorialActive = WP.store.get('wp.tut', '0') !== '1';
   var ghostEl = null;
@@ -89,10 +89,21 @@
       letters.push({ ch: ch, parts: parts, boxes: boxes, bb: bb, cellW: bb.w + sw + gap, slots: [] });
     }
     var total = letters.reduce(function (a, l) { return a + l.cellW; }, 0);
-    var wordArea = Math.max(130, H * 0.30);
-    var s = Math.min((W - 32) / total, (wordArea * 0.9) / (80 + sw), 1.5);
+    var wordArea = Math.max(140, H * 0.33);
+    var maxS = text.length <= 2 ? 2.0 : text.length === 3 ? 1.75 : 1.5;
+    var s = Math.min((W - 32) / total, (wordArea * 0.9) / (80 + sw), maxS);
+    // パーツ置き場に重ならずに収まるか、実際に置いてみる。収まらなければ少し縮める
+    var safeB = parseFloat(getComputedStyle(safeProbe).paddingBottom) || 0;
+    var poolTop = wordArea + 30, poolBottom = H - safeB - 16;
+    var specs = [];
+    letters.forEach(function (L) { L.parts.forEach(function (pt, pi) { specs.push(pieceSpec(pt, L.boxes[pi])); }); });
+    var layout = null;
+    for (var guard = 0; guard < 14 && !layout; guard++) { layout = packPieces(specs, s, sw, poolTop, poolBottom, 6); if (!layout) s *= 0.95; }
+    if (!layout) layout = packPieces(specs, s, sw, poolTop, poolBottom, -8); // 最後の手段: 少し重なっても置く
     var X = (W - total * s) / 2, cy = wordArea * 0.5 + 6;
 
+    el('rect', { x: 16, y: 10, width: W - 32, height: wordArea, rx: 26, fill: 'rgba(0,0,0,.05)' }, board);
+    el('rect', { x: 14, y: 6, width: W - 28, height: wordArea, rx: 26, fill: 'rgba(255,255,255,.78)', stroke: '#e8e3d6', 'stroke-width': 2 }, board);
     var slots = [];
     letters.forEach(function (L, li) {
       var tx = X - (L.bb.x - sw / 2 - gap / 2) * s, ty = cy - 50 * s;
@@ -106,13 +117,14 @@
                      cx: tx + s * (b.x + b.w / 2), cy: ty + s * (b.y + b.h / 2) };
         slot.slotEl = el('path', { 'class': 'slot', d: p.d, 'stroke-width': sw }, L.g);
         slot.fillEl = el('path', { 'class': 'fill', d: p.d, 'stroke-width': sw, stroke: slot.color }, L.g);
+        el('path', { 'class': 'fillhi', d: p.d, 'stroke-width': sw * 0.28, transform: 'translate(-1.6 -1.8)' }, L.g);
         L.slots.push(slot); slots.push(slot);
       });
     });
 
     cur = { text: text, letters: letters, slots: slots, pieces: [], s: s, sw: sw, wordArea: wordArea,
             t0: now(), lastFit: now(), fits: [], misses: 0, hints: 0, done: false,
-            orient: cfg.POOL_ORIENTATION, gen: ++buildGen, entering: false };
+            orient: cfg.POOL_ORIENTATION, gen: ++buildGen, entering: false, layout: layout, poolTop: poolTop, poolBottom: poolBottom };
     buildPool();
     combo = 0; updateCombo();
     if (opts && opts.animate) enter(cur, opts.onReady); else if (opts && opts.onReady) opts.onReady();
@@ -134,30 +146,37 @@
     }, function () { if (cur !== c) return; c.entering = false; if (onReady) onReady(); });
   }
 
+  // パーツの見た目（matched = 枠と同じ形 / canonical = 型ごとの標準形）
+  function pieceSpec(part, slotBox) {
+    if (cfg.POOL_ORIENTATION === 'canonical') { var d = WP.CANON[part.t]; return { d: d, box: bboxOf(d) }; }
+    return { d: part.d, box: slotBox };
+  }
+
+  // パーツ置き場に、重ならないように置く。置けなければ null
+  function packPieces(specs, s, sw, top, bottom, margin) {
+    var items = specs.map(function (sp, i) { return { i: i, w: (sp.box.w + sw) * s, h: (sp.box.h + sw) * s }; });
+    items.sort(function (a, b) { return b.w * b.h - a.w * a.h; }); // 大きいものから
+    var placed = [], out = [];
+    for (var k = 0; k < items.length; k++) {
+      var it = items[k], ok = false, x, y;
+      for (var tries = 0; tries < 500 && !ok; tries++) {
+        x = 16 + it.w / 2 + Math.random() * Math.max(0, W - 32 - it.w);
+        y = top + it.h / 2 + Math.random() * Math.max(0, bottom - top - it.h);
+        ok = placed.every(function (q) { return Math.abs(x - q.x) > (it.w + q.w) / 2 + margin || Math.abs(y - q.y) > (it.h + q.h) / 2 + margin; });
+      }
+      if (!ok) { if (margin >= 0) return null; }
+      placed.push({ x: x, y: y, w: it.w, h: it.h }); out[it.i] = { x: x, y: y };
+    }
+    return out;
+  }
+
   function buildPool() {
     var s = cur.s, sw = cur.sw;
-    var safeBottom = parseFloat(getComputedStyle(safeProbe).paddingBottom) || 0;
-    var top = cur.wordArea + 30, bottom = H - safeBottom - 16;
     var pieces = cur.slots.map(function (slot, i) {
-      var d, box;
-      if (cfg.POOL_ORIENTATION === 'canonical') { d = WP.CANON[slot.type]; box = bboxOf(d); }
-      else { d = slot.d; box = slot.box; }
-      return { slot: i, type: slot.type, d: d, box: box, color: slot.color, locked: false,
+      var sp = pieceSpec({ t: slot.type, d: slot.d }, slot.box), box = sp.box;
+      return { slot: i, type: slot.type, d: sp.d, box: box, color: slot.color, locked: false,
+               hx: cur.layout[i].x, hy: cur.layout[i].y,
                w: (box.w + sw) * s, h: (box.h + sw) * s, cx: box.x + box.w / 2, cy: box.y + box.h / 2 };
-    });
-    // 大きいパーツから重ならないように置く
-    var order = pieces.slice().sort(function (a, b) { return b.w * b.h - a.w * a.h; });
-    var placed = [];
-    order.forEach(function (p) {
-      var ok = false, margin = 10, tries = 0, x, y;
-      while (!ok && tries < 900) {
-        if (tries === 300) margin = 3; if (tries === 600) margin = -6;
-        tries++;
-        x = 16 + p.w / 2 + Math.random() * Math.max(0, W - 32 - p.w);
-        y = top + p.h / 2 + Math.random() * Math.max(0, bottom - top - p.h);
-        ok = placed.every(function (q) { return Math.abs(x - q.x) > (p.w + q.w) / 2 + margin || Math.abs(y - q.y) > (p.h + q.h) / 2 + margin; });
-      }
-      p.hx = x; p.hy = y; placed.push({ x: x, y: y, w: p.w, h: p.h });
     });
     // 見た目の重なり順をばらす
     pieces.slice().sort(function () { return Math.random() - 0.5; }).forEach(function (p) {
@@ -167,6 +186,7 @@
       p.angle = 0;
       el('path', { 'class': 'pshadow', d: p.d, 'stroke-width': sw }, p.inner);
       p.pathEl = el('path', { 'class': 'pp', d: p.d, 'stroke-width': sw, stroke: p.color }, p.inner);
+      el('path', { 'class': 'phi', d: p.d, 'stroke-width': sw * 0.28, transform: 'translate(-1.6 -1.8)' }, p.inner);
       var len = p.pathEl.getTotalLength(), n = Math.max(2, Math.ceil(len / 4));
       p.pts = [];
       for (var i = 0; i <= n; i++) { var pt = p.pathEl.getPointAtLength(len * i / n); p.pts.push([pt.x, pt.y]); }
@@ -387,10 +407,12 @@
     var p = pieceFor(t); if (!p) return;
     stopHint();
     p.inner.classList.add('shake'); hintPiece = p; cur.hints++;
+    t.slotEl.classList.add('pulse'); hintSlot = t;
   }
   function stopHint() {
     clearTimeout(hintTimer); hintTimer = null;
     if (hintPiece) { hintPiece.inner.classList.remove('shake'); hintPiece = null; }
+    if (hintSlot) { hintSlot.slotEl.classList.remove('pulse'); hintSlot = null; }
   }
   function restartHint() {
     stopHint();

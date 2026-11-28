@@ -55,6 +55,12 @@
     WP.store.set(PKEY, JSON.stringify(a.slice(-80)));
     perfPending = null; perfB.celeb = newB();
   }
+  // 保存した記録を、1語ごとに（時刻・モード・プレイ中と演出中の平均 / p95 / 33ms超）。時間がたつにつれて重くなるかを見るため
+  WP.perfRecords = function () {
+    function hm(t) { var d = new Date(t); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2); }
+    function f(q) { return q ? q.avg + '/' + q.p95 + '/' + q.o33 + 'of' + q.n : '-'; }
+    return perfLoad().slice(-30).map(function (x) { return hm(x.t) + ' ' + (x.dev ? 'dev ' : '通常') + ' ' + (x.word + '     ').slice(0, 5) + ' プレイ ' + f(x.play) + ' | 演出 ' + f(x.celeb); });
+  };
   WP.perfSummary = function () {
     var a = perfLoad(), out = [];
     [[0, '通常の URL'], [1, '?dev=1 の URL']].forEach(function (g) {
@@ -537,6 +543,7 @@
     lines.push('振動: ' + WP.hapticMode() + ' / 音: ' + WP.audio.state() + ' / FPS: ' + WP.perf.fps + ' (最小 ' + WP.perf.minFps + ', 最悪フレーム ' + WP.perf.worstMs + 'ms)');
     lines.push('設定: ' + cfgStr);
     WP.perfSummary().forEach(function (l) { lines.push('計測（端末に保存、いつも記録） ' + l); });
+    var pr = WP.perfRecords(); if (pr.length) { lines.push('計測の記録（古い順。平均ms/p95ms/33ms超の数of総フレーム数）:'); pr.forEach(function (l) { lines.push('  ' + l); }); }
     lines.push('コイン: ' + WP.fx.coinTotal() + ' / 完成した単語: ' + WP.log.entries.length);
     WP.log.entries.forEach(function (e, i) {
       lines.push((i + 1) + '. ' + e.word + ' [' + e.orient + '] ' + e.parts + 'パーツ ' + (e.ms / 1000).toFixed(1) + '秒 / 平均はめ ' + e.avgFit + 'ms (最大 ' + e.maxFit + 'ms) / ミス ' + e.misses + ' / ヒント ' + e.hints + (e.perfect ? ' / PERFECT' : '') +

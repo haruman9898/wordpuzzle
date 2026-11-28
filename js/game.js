@@ -1,14 +1,13 @@
-/* ゲーム本体（手触り確認版）: 1単語を作る → 完成したら次の単語、を繰り返す。
-   タイマー・星・ステージ選択はまだ入れない（ステージ1〜3の試作で追加）。 */
+/* 盤面（1単語ぶん）: 枠とパーツの生成、ドラッグ・吸着・はめる、ヒント、チュートリアル。
+   ステージ・タイマー・画面の切り替えは flow.js が担当し、ここは WP.game の関数を呼ばれる側。 */
 (function () {
   'use strict';
   var WP = window.WP, cfg = WP.cfg;
   var NS = 'http://www.w3.org/2000/svg';
   var $ = function (s) { return document.querySelector(s); };
 
-  var stageEl = $('#stage'), board = $('#board'), fx = $('#fx'), fxc = fx.getContext('2d');
-  var comboEl = $('#combo'), bannerEl = $('#banner'), coinCountEl = $('#coinCount');
-  var jarEl = $('#jar'), jarDiscs = $('#jarDiscs'), safeProbe = $('#safeProbe');
+  var stageEl = $('#stage'), board = $('#board');
+  var comboEl = $('#combo'), bannerEl = $('#banner'), safeProbe = $('#safeProbe');
 
   function el(tag, attrs, parent) {
     var e = document.createElementNS(NS, tag);
@@ -28,16 +27,14 @@
   }
 
   // ---- 状態 ----
-  var W = 0, H = 0, dpr = 1;
+  var W = 0, H = 0, buildGen = 0;
   var cur = null;          // 現在の単語 {text, letters, slots, pieces, ...}
   var drag = null;
   var combo = 0;
   var busy = false;        // 単語完成の演出中
   var hintTimer = null, hintPiece = null;
   var lastWord = null;
-  var coins = Number(WP.store.get('wp.coins', '0')) || 0;
   var tutorialActive = WP.store.get('wp.tut', '0') !== '1';
-  var coinFx = [];
   var ghostEl = null;
   WP.perf = { fps: 0, minFps: 0, worstMs: 0 };
   WP.log = { entries: [], sessionStart: Date.now() };
@@ -57,20 +54,10 @@
   }
   function restartClass(node, cls) { node.classList.remove(cls); void node.getBoundingClientRect(); node.classList.add(cls); }
 
-  // ---- コイン（瓶） ----
-  function renderJar() {
-    coinCountEl.textContent = String(coins);
-    var n = Math.min(coins, 10), html = '';
-    for (var i = 0; i < n; i++) {
-      var cx = 22 + ((i % 3) - 1) * 5, cy = 48 - i * 3.4;
-      html += '<ellipse cx="' + cx + '" cy="' + cy + '" rx="9" ry="3.6" fill="#f6c542" stroke="#c58f12" stroke-width="1.4"/>';
-    }
-    jarDiscs.innerHTML = html;
-  }
-
   // ---- 単語の組み立て ----
   function clearBoard() {
     stopHint(); stopGhostEl();
+    if (cur && cur.enterTween) cur.enterTween.cancel = true;
     while (board.firstChild) board.removeChild(board.firstChild);
     cur = null; drag = null;
   }
@@ -78,11 +65,8 @@
   function measureLayout() {
     var r = stageEl.getBoundingClientRect();
     W = Math.round(r.width); H = Math.round(r.height);
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
     board.setAttribute('width', W); board.setAttribute('height', H);
     board.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-    fx.width = Math.round(window.innerWidth * dpr); fx.height = Math.round(window.innerHeight * dpr);
-    fxc.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   function pickWord() {
@@ -91,7 +75,7 @@
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
-  function buildWord(text) {
+  function buildWord(text, opts) {
     clearBoard();
     measureLayout();
     lastWord = text;
@@ -128,11 +112,26 @@
 
     cur = { text: text, letters: letters, slots: slots, pieces: [], s: s, sw: sw, wordArea: wordArea,
             t0: now(), lastFit: now(), fits: [], misses: 0, hints: 0, done: false,
-            orient: cfg.POOL_ORIENTATION };
+            orient: cfg.POOL_ORIENTATION, gen: ++buildGen, entering: false };
     buildPool();
     combo = 0; updateCombo();
+    if (opts && opts.animate) enter(cur, opts.onReady); else if (opts && opts.onReady) opts.onReady();
     restartHint();
     if (tutorialActive && !drag) startGhost();
+  }
+
+  // パーツが画面の下から飛んでくる（入場）。終わるまでは掴めない。
+  function enter(c, onReady) {
+    c.entering = true;
+    var n = c.pieces.length, STAG = 55, DUR = 430, total = DUR + STAG * (n - 1);
+    c.pieces.forEach(function (p) { p.sy = H + p.h; setPos(p, p.hx, p.sy); });
+    c.enterTween = tween(total, function (t) {
+      var ms = t * total;
+      c.pieces.forEach(function (p, i) {
+        var u = clamp((ms - i * STAG) / DUR, 0, 1);
+        setPos(p, p.hx, p.sy + (p.hy - p.sy) * easeOutBack(u));
+      });
+    }, function () { if (cur !== c) return; c.entering = false; if (onReady) onReady(); });
   }
 
   function buildPool() {
@@ -210,7 +209,7 @@
 
   board.addEventListener('pointerdown', function (e) {
     WP.audio.unlock();
-    if (busy || drag || !cur) return;
+    if (busy || drag || !cur || cur.entering) return;
     var pt = pointerPos(e), p = hitPiece(pt);
     if (!p) return;
     e.preventDefault();
@@ -313,69 +312,20 @@
     stageEl.appendChild(n);
   }
 
-  // ---- 単語完成 ----
+  // ---- 単語完成（その後の流れ=次の単語・結果画面は flow.js が決める） ----
   function completeWord() {
     busy = true; cur.done = true; stopHint(); stopGhostEl();
     var ms = Math.round(now() - cur.t0), perfect = cur.misses === 0;
     var avg = cur.fits.length ? Math.round(cur.fits.reduce(function (a, b) { return a + b; }, 0) / cur.fits.length) : 0;
-    WP.log.entries.push({ word: cur.text, orient: cur.orient, parts: cur.slots.length, ms: ms, avgFit: avg,
-                          maxFit: Math.max.apply(null, cur.fits), misses: cur.misses, hints: cur.hints, perfect: perfect, fits: cur.fits.slice() });
+    var entry = { word: cur.text, orient: cur.orient, parts: cur.slots.length, ms: ms, avgFit: avg,
+                  maxFit: Math.max.apply(null, cur.fits), misses: cur.misses, hints: cur.hints, perfect: perfect, fits: cur.fits.slice() };
+    WP.log.entries.push(entry);
     cur.letters.forEach(function (L, i) { L.g.style.animationDelay = (i * 0.12) + 's'; restartClass(L.g, 'jump'); });
     WP.audio.word();
     bannerEl.textContent = perfect ? 'PERFECT!' : 'NICE!';
     restartClass(bannerEl, 'show');
-    spawnCoins(cfg.COINS_PER_WORD);
-    setTimeout(function () {
-      cur.letters.forEach(function (L) { L.g.style.animationDelay = ''; });
-      busy = false; buildWord(pickWord());
-    }, 2400);
-  }
-
-  // ---- コインの演出（単語完成で降ってきて、瓶に溜まる） ----
-  function spawnCoins(n) {
-    var sr = stageEl.getBoundingClientRect(), jr = jarEl.getBoundingClientRect();
-    var jx = jr.left + jr.width * 0.3, jy = jr.top + jr.height * 0.5, t = now();
-    for (var i = 0; i < n; i++) {
-      coinFx.push({ state: 'wait', at: t + i * 110, x: 30 + Math.random() * (window.innerWidth - 60), y: -30, vy: 0,
-                    ly: sr.top + sr.height * (0.38 + Math.random() * 0.35), bounces: 0, spin: Math.random() * 6, jx: jx, jy: jy, r: 15 });
-    }
-  }
-  function drawCoin(c) {
-    fxc.save(); fxc.translate(c.x, c.y);
-    var k = c.scale == null ? 1 : c.scale;
-    fxc.scale(Math.max(0.15, Math.abs(Math.cos(c.spin))) * k, k);
-    fxc.beginPath(); fxc.arc(0, 0, c.r, 0, Math.PI * 2);
-    fxc.fillStyle = '#f6c542'; fxc.fill(); fxc.lineWidth = 2.5; fxc.strokeStyle = '#c58f12'; fxc.stroke();
-    fxc.beginPath(); fxc.arc(0, 0, c.r * 0.62, 0, Math.PI * 2); fxc.lineWidth = 1.6; fxc.strokeStyle = 'rgba(197,143,18,.8)'; fxc.stroke();
-    fxc.fillStyle = 'rgba(255,255,255,.55)'; fxc.beginPath(); fxc.ellipse(-c.r * 0.3, -c.r * 0.35, c.r * 0.25, c.r * 0.12, -0.6, 0, Math.PI * 2); fxc.fill();
-    fxc.restore();
-  }
-  function stepCoins(dt, t) {
-    if (!coinFx.length) { return; }
-    fxc.clearRect(0, 0, window.innerWidth, window.innerHeight);
-    for (var i = coinFx.length - 1; i >= 0; i--) {
-      var c = coinFx[i];
-      if (c.state === 'wait') { if (t >= c.at) c.state = 'fall'; else continue; }
-      if (c.state === 'fall') {
-        c.vy += 1700 * dt; c.y += c.vy * dt; c.spin += dt * 9;
-        if (c.y >= c.ly) {
-          c.y = c.ly; c.vy *= -0.42; c.bounces++; WP.audio.coinLand();
-          if (c.bounces >= 2) { c.state = 'rest'; c.restAt = t; }
-        }
-      } else if (c.state === 'rest') {
-        c.spin += dt * 3;
-        if (t - c.restAt > 450) { c.state = 'fly'; c.flyAt = t; c.fx = c.x; c.fy = c.y; }
-      } else if (c.state === 'fly') {
-        var u = clamp((t - c.flyAt) / 520, 0, 1), e = u * u * u;
-        c.x = c.fx + (c.jx - c.fx) * e; c.y = c.fy + (c.jy - c.fy) * e; c.spin += dt * 12; c.scale = 1 - 0.45 * u;
-        if (u >= 1) {
-          coins++; WP.store.set('wp.coins', String(coins)); renderJar(); restartClass(jarEl, 'pop'); WP.audio.coin();
-          coinFx.splice(i, 1); continue;
-        }
-      }
-      drawCoin(c);
-    }
-    if (!coinFx.length) fxc.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    WP.fx.coins(cfg.COINS_PER_WORD);
+    if (WP.game.onWordComplete) WP.game.onWordComplete(entry);
   }
 
   // ---- ヒント: 操作が止まったら、はまるパーツが震える ----
@@ -446,7 +396,8 @@
       WP.perf = { fps: Math.round(fps), minFps: minFps === 999 ? Math.round(fps) : Math.round(minFps), worstMs: Math.round(worst) };
       accT = 0; accN = 0; worst = 0;
     }
-    stepCoins(dt, t); stepGhost(t);
+    WP.fx.step(dt, t); stepGhost(t);
+    if (WP.flow && WP.flow.tick) WP.flow.tick(t);
     requestAnimationFrame(tick);
   }
 
@@ -459,22 +410,33 @@
     lines.push('画面: ' + window.innerWidth + 'x' + window.innerHeight + ' @' + (window.devicePixelRatio || 1) + 'x');
     lines.push('振動: ' + WP.hapticMode() + ' / 音: ' + WP.audio.state() + ' / FPS: ' + WP.perf.fps + ' (最小 ' + WP.perf.minFps + ', 最悪フレーム ' + WP.perf.worstMs + 'ms)');
     lines.push('設定: ' + cfgStr);
-    lines.push('コイン: ' + coins + ' / 完成した単語: ' + WP.log.entries.length);
+    lines.push('コイン: ' + WP.fx.coinTotal() + ' / 完成した単語: ' + WP.log.entries.length);
     WP.log.entries.forEach(function (e, i) {
       lines.push((i + 1) + '. ' + e.word + ' [' + e.orient + '] ' + e.parts + 'パーツ ' + (e.ms / 1000).toFixed(1) + '秒 / 平均はめ ' + e.avgFit + 'ms (最大 ' + e.maxFit + 'ms) / ミス ' + e.misses + ' / ヒント ' + e.hints + (e.perfect ? ' / PERFECT' : ''));
     });
     return lines.join('\n');
   };
 
-  // ---- 公開 ----
+  // ---- 公開（flow.js・dev.js・テストから呼ぶ） ----
+  function slideIn() {
+    board.classList.remove('out'); board.classList.add('pre'); void board.offsetWidth; board.classList.remove('pre');
+  }
   WP.game = {
-    rebuild: function () { if (!busy) buildWord(cur ? cur.text : pickWord()); },
-    newWord: function (w) { if (!busy) buildWord(w || pickWord()); },
+    show: function (text, opts) { busy = false; if (opts && opts.animate) slideIn(); buildWord(text, opts); },
+    newWord: function (w) { WP.game.show(w || pickWord(), { animate: false }); },
+    pickWord: pickWord,
+    exit: function (cb) { board.classList.add('out'); setTimeout(cb, 290); },
+    clear: function () { clearBoard(); busy = false; board.classList.remove('out'); },
+    lock: function (b) { busy = !!b; },
+    cancelDrag: function () { if (drag) endDrag(true); },
+    resetCombo: function () { combo = 0; updateCombo(); },
+    rebuild: function () { if (cur && !busy) buildWord(cur.text, { animate: false }); },
     resetTutorial: function () { WP.store.set('wp.tut', '0'); tutorialActive = true; if (cur && !busy) startGhost(); },
-    resetCoins: function () { coins = 0; WP.store.set('wp.coins', '0'); renderJar(); },
+    resetCoins: function () { WP.fx.resetCoins(); },
     clearLog: function () { WP.log.entries = []; },
+    onWordComplete: null,
     debug: function () {
-      return { word: cur && cur.text, combo: combo, busy: busy, coins: coins, misses: cur && cur.misses, hints: cur && cur.hints,
+      return { word: cur && cur.text, combo: combo, busy: busy, entering: cur && cur.entering, coins: WP.fx.coinTotal(), misses: cur && cur.misses, hints: cur && cur.hints,
                W: W, H: H, s: cur && cur.s,
                slots: cur && cur.slots.map(function (s) { return { type: s.type, x: s.cx, y: s.cy, filled: s.filled, letter: s.letter }; }),
                pieces: cur && cur.pieces.map(function (p) { return { type: p.type, x: p.x, y: p.y, hx: p.hx, hy: p.hy, locked: p.locked, w: p.w, h: p.h, shaking: p === hintPiece }; }) };
@@ -482,10 +444,8 @@
   };
 
   function init() {
-    renderJar();
-    buildWord(pickWord());
     var rt;
-    window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (!busy && !drag) buildWord(cur ? cur.text : pickWord()); }, 200); });
+    window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (cur && !busy && !drag && !cur.entering) buildWord(cur.text, { animate: false }); }, 200); });
     // iPhone のスクロール・ピンチ・ゴムバンドを止める（開発メニューの中だけはスクロールできる）
     document.addEventListener('touchmove', function (e) { if (!e.target.closest || !e.target.closest('#dev')) e.preventDefault(); }, { passive: false });
     ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (n) { document.addEventListener(n, function (e) { e.preventDefault(); }); });

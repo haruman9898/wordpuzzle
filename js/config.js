@@ -14,7 +14,8 @@
     SNAP_RADIUS: 70,            // 吸着範囲 (px)
     DRAG_OFFSET_Y: 45,          // ドラッグ中、指より上に浮かせる量 (px)
     HINT_DELAY_SEC: 5,          // 操作が止まってからヒントが震え始めるまで (秒)
-    COINS_PER_WORD: 5,          // 1単語完成で降ってくるコインの数
+    COINS_PER_WORD: 5,
+    BONUS_SECONDS: 2,           // 単語を1つ完成するごとに足す制限時間（0 にもできる）          // 1単語完成で降ってくるコインの数
     STROKE: 12,                 // 線の太さ（座標単位。承認済み = 12）
     POOL_ORIENTATION: 'matched',// 'matched' = 枠と同じ形 / 'canonical' = 型ごとの標準形
     VOLUME: 0.7,

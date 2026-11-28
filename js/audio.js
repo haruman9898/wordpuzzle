@@ -93,6 +93,13 @@
         tone({ f: f * 2, dur: 0.16, type: 'sine', vol: 0.12, delay: 0.1 + i * 0.09 });
       });
     },
+    warn: function () { tone({ f: 880, dur: 0.12, type: 'square', vol: 0.12 }); },
+    fail: function () { tone({ f: 392, f2: 262, dur: 0.35, type: 'triangle', vol: 0.3 }); },
+    clear: function () {
+      [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568].forEach(function (f, i) { tone({ f: f, dur: 0.3, type: 'triangle', vol: 0.4, delay: i * 0.1 }); });
+    },
+    star: function (k) { tone({ f: 880 * Math.pow(1.26, k - 1), dur: 0.22, type: 'sine', vol: 0.4 }); tone({ f: 1760 * Math.pow(1.26, k - 1), dur: 0.16, type: 'sine', vol: 0.15, delay: 0.04 }); },
+    bgm: function () { /* マイルストーン3で実装 */ },
     coinLand: function () { tone({ f: 1760, f2: 1500, dur: 0.07, type: 'sine', vol: 0.18 }); },
     coin: function () {
       var r = 1 + (Math.random() - 0.5) * 0.08;

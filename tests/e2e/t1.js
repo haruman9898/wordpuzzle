@@ -3,7 +3,7 @@ const {launch,state,fitOne,drag} = require('./lib.js');
   const {b,p,errs} = await launch();
   await p.goto(''+(process.env.URL||'http://localhost:8123')+'/index.html');
   await p.waitForTimeout(500);
-  await p.evaluate(()=>WP.game.newWord('BIRD'));
+  await p.evaluate(()=>{WP.flow.freePlay(); WP.game.newWord('BIRD');});
   await p.waitForTimeout(300);
   let st = await state(p);
   console.log('word',st.word,'slots',st.slots.length,'pieces',st.pieces.length,'scale',st.s.toFixed(2),'W,H',st.W,st.H);

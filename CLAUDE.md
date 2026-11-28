@@ -18,6 +18,12 @@
 - 振動が効かない環境でも、音と演出だけで成立させる。エラーにしない。
 - `localStorage` の読み書きは try/catch で守る。
 
+## ファイル構成
+- `index.html` / `style.css` / `js/` — 手触り確認版（`config` 定数・`letters` 文字データ・`audio`・`haptics`・`game`・`dev`）
+- JS / CSS を変えたら、`index.html` の `?v=` と `WP.BUILD`（例 `proto1-a`）を全部同じ新しい値に置き換える（iPhone のキャッシュ対策）。
+- `tests/e2e/` — Playwright の動作確認（`README.md` 参照）
+- `.github/workflows/pages.yml` — `main` への push で GitHub Pages に公開（サイト用ファイルだけを集めて公開する）
+
 ## 検証の限界
 - 手触り・振動・音の質は、ユーザーの iPhone（iOS 17.4 以降）でしか確認できない。ヘッドレス Chromium の FPS はスマホの FPS ではない。
 - 実機の FPS は、公開版の診断表示をユーザーに読んでもらう。

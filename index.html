@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f6f4ef">
+<title>文字パズル 試作</title>
+<link rel="stylesheet" href="style.css?v=proto1-a">
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <button id="gear" type="button" aria-label="開発メニュー">⚙</button>
+    <div id="center"><pre id="diag"></pre><div id="combo"></div></div>
+    <div id="jar" aria-label="コイン">
+      <svg id="jarSvg" viewBox="0 0 44 56" width="40" height="50">
+        <path d="M12 6 H32 M10 10 H34 Q38 12 38 20 V46 Q38 52 32 52 H12 Q6 52 6 46 V20 Q6 12 10 10 Z" fill="rgba(255,255,255,.55)" stroke="#9aa0a6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <g id="jarDiscs"></g>
+      </svg>
+      <span id="coinCount">0</span>
+    </div>
+  </header>
+  <main id="stage">
+    <svg id="board" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="banner"></div>
+  </main>
+  <div id="safeProbe"></div>
+</div>
+<canvas id="fx"></canvas>
+<section id="dev" hidden></section>
+<div id="rotate"><p>縦向きにしてください</p></div>
+
+<script>window.WP={BUILD:'proto1-a'};</script>
+<script src="js/config.js?v=proto1-a"></script>
+<script src="js/letters.js?v=proto1-a"></script>
+<script src="js/audio.js?v=proto1-a"></script>
+<script src="js/haptics.js?v=proto1-a"></script>
+<script src="js/game.js?v=proto1-a"></script>
+<script src="js/dev.js?v=proto1-a"></script>
+</body>
+</html>

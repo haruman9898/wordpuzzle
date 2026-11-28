@@ -40,14 +40,14 @@
     $('#bookCount').textContent = total() + ' / ' + ALL.length;
     var o = PICS.map(function (w) {
       var seen = count(w) > 0;
-      return '<button type="button" class="bk' + (seen ? ' seen' : '') + '" data-w="' + w + '"><span class="bkimg"><img src="' + WP.pics.url(w) + '" alt="' + (seen ? w : '') + '" class="' + (seen ? '' : 'sil') + '"></span><span class="bkname">' + (seen ? wordHtml(w) : '？？？') + '</span></button>';
+      return '<button type="button" class="bk' + (seen ? ' seen' : '') + '" data-w="' + w + '"><span class="bkimg"><img src="' + WP.pics.url(w) + '" alt="' + (seen ? w : '') + '" class="' + (seen ? '' : 'sil') + '" style="transform:' + WP.pics.transformOf(w) + '"></span><span class="bkname">' + (seen ? wordHtml(w) : '？？？') + '</span></button>';
     }).join('');
     $('#bookList').innerHTML = o + (TEXTS.length ? '<h3 class="bksec">さいしょのことば</h3><div class="chips">' + TEXTS.map(function (w) {
       var seen = count(w) > 0; return '<span class="chip' + (seen ? ' seen' : '') + '">' + (seen ? wordHtml(w) : '？？') + '</span>';
     }).join('') + '</div>' : '');
   }
   function detail(w) {
-    $('#bdImg').src = WP.pics.url(w); $('#bdImg').alt = w;
+    $('#bdImg').src = WP.pics.url(w); $('#bdImg').alt = w; $('#bdImg').style.transform = WP.pics.transformOf(w);
     $('#bdWord').innerHTML = wordHtml(w);
     $('#bdCount').textContent = count(w) + ' かい つくった';
     $('#bookDetail').hidden = false;

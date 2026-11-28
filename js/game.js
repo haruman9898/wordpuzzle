@@ -336,7 +336,7 @@
     var wordDone = cur.slots.every(function (s) { return s.filled; });
 
     WP.audio.fit(combo);
-    WP.haptic(wordDone ? 'strong' : letterDone ? 'medium' : 'light'); // pointerup の中で同期的に
+    WP.hapticDeferred(wordDone ? 'strong' : letterDone ? 'medium' : 'light'); // pointerup の中（設定により touchend）で
     WP.fx.ring(slot.cx, slot.cy, slot.color, 46); WP.fx.burst(slot.cx, slot.cy, slot.color, 9);
     if (letterDone) {
       restartClass(L.g, 'bounce');

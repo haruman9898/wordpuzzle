@@ -26,6 +26,7 @@
     MUTE: false,
     HAPTICS: true,
     IOS_HAPTIC: 'label-onscreen', // iPhone の振動方式（開発メニューで切り替え）
+    IOS_HAPTIC_CTX: 'pointerup',  // はめた時の振動を出す場面: 'pointerup'（指を離した直後）/ 'touchend'（タッチ終了イベント）
     HAPTIC_ON_GRAB: true,       // 掴んだ瞬間にも軽く振動（iPhone で pointerdown が効くかの実験も兼ねる）
     SILENT_AUDIO: true,         // サイレントスイッチ下でも鳴らすための無音 <audio> ループ（音楽が止まる副作用あり）
     WORD: 'random'              // 'random' か、特定の単語

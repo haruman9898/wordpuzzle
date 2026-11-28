@@ -45,6 +45,10 @@
     h += '<div class="btns"><button data-h="light">弱</button><button data-h="medium">中</button><button data-h="strong">強</button></div>';
     h += '<div class="row" style="margin-top:10px"><label>本物のスイッチ（直接タップして触覚を確認）</label><input type="checkbox" switch id="devRealSwitch"></div>';
     h += '<div class="row"><label>掴んだ瞬間にも振動</label><input type="checkbox" id="devGrab"></div>';
+    h += '<div class="row"><label>はめた時の振動の場面（iPhone）</label><select id="devCtx"><option value="pointerup">pointerup（離した直後）</option><option value="touchend">touchend</option></select></div>';
+    h += '<h3>振動の実験（iPhone）</h3><p style="font-size:13px;color:var(--sub);margin:4px 0 8px">上の「iPhone の振動方式」を選んでから、下の四角を1つずつタップして、<b>振動したものの記号</b>を教えてください。方式を変えてもう一度試すと、さらに分かります。</p><div id="hx">'
+      + [['A','click の中で label.click()'],['B','touchend の中で label.click()'],['C','pointerup の中で label.click()'],['D','pointerdown の中で label.click()'],['E','touchstart の中で label.click()'],['F','タップの 0.1秒後に label.click()'],['H','ドラッグして離した時（pointerup）']].map(function (x) { return '<div class="xbox" data-x="' + x[0] + '"><b>' + x[0] + '</b> ' + x[1] + '</div>'; }).join('')
+      + '<label class="xbox" for="hxSw"><b>G</b> 透明な label を直接タップ（コードを使わない）</label><input id="hxSw" type="checkbox" switch style="position:absolute;opacity:0;width:1px;height:1px"></div>';
     h += '<h3>音テスト</h3><div class="btns"><button data-s="fit">はまる</button><button data-s="wrong">違う枠</button><button data-s="letter">文字完成</button><button data-s="word">単語完成</button><button data-s="coin">コイン</button><button data-s="bgmtest">BGM 試聴</button></div>';
     h += '<h3>ステージ</h3><div class="btns"><button data-st="1">ステージ1</button><button data-st="2">ステージ2</button><button data-st="3">ステージ3</button><button id="devLeft3">残り3秒にする</button></div>';
     h += '<div class="btns" style="margin-top:8px"><button id="devUnlock">全ステージ解放</button><button id="devProg">進行を消す</button><button id="devTitle">タイトルへ</button><button id="devFree">フリープレイ（タイマーなし）</button></div>';
@@ -62,6 +66,22 @@
     $('#devSilent').checked = cfg.SILENT_AUDIO;
     $('#devHmethod').value = cfg.IOS_HAPTIC;
     $('#devGrab').checked = cfg.HAPTIC_ON_GRAB;
+    $('#devCtx').value = cfg.IOS_HAPTIC_CTX;
+    wireExperiments();
+  }
+
+  // 振動の実験: 場面ごとに、同じ方式で label.click() を呼ぶ
+  function wireExperiments() {
+    var f = function () { WP.haptic('medium', true); };
+    dev.querySelectorAll('.xbox[data-x]').forEach(function (b) {
+      var x = b.getAttribute('data-x');
+      if (x === 'A') b.addEventListener('click', f);
+      if (x === 'B') b.addEventListener('touchend', f);
+      if (x === 'C' || x === 'H') b.addEventListener('pointerup', f);
+      if (x === 'D') b.addEventListener('pointerdown', f);
+      if (x === 'E') b.addEventListener('touchstart', f, { passive: true });
+      if (x === 'F') b.addEventListener('click', function () { setTimeout(f, 100); });
+    });
   }
 
   function open() {
@@ -97,6 +117,7 @@
   $('#devMute').addEventListener('change', function (e) { cfg.MUTE = e.target.checked; changed(false); WP.audio.bgmRefresh(); });
   $('#devBgm').addEventListener('change', function (e) { cfg.BGM = e.target.checked; changed(false); WP.audio.bgmRefresh(); });
   $('#devHmethod').addEventListener('change', function (e) { WP.hapticSetMethod(e.target.value); $('#devHm').textContent = WP.hapticMode(); });
+  $('#devCtx').addEventListener('change', function (e) { cfg.IOS_HAPTIC_CTX = e.target.value; changed(false); });
   $('#devGrab').addEventListener('change', function (e) { cfg.HAPTIC_ON_GRAB = e.target.checked; changed(false); });
   $('#devSilent').addEventListener('change', function (e) { cfg.SILENT_AUDIO = e.target.checked; changed(false); });
   $('#devHaptics').addEventListener('change', function (e) { cfg.HAPTICS = e.target.checked; changed(false); });

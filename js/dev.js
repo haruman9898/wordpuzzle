@@ -34,6 +34,7 @@
     h += '<div class="row"><label>出題する単語</label><select id="devWord"><option value="random">ランダム</option>' + WP.WORDS_ALL.map(function (w) { return '<option>' + w + '</option>'; }).join('') + '</select></div>';
     h += '<div class="row"><label>ミュート</label><input type="checkbox" id="devMute"></div>';
     h += '<div class="row"><label>振動</label><input type="checkbox" id="devHaptics"></div>';
+    h += '<div class="row"><label>無音ループ（要再読み込み）</label><input type="checkbox" id="devSilent"></div>';
     h += '<h3>振動テスト（現在の方式: <span id="devHm"></span>）</h3><div class="btns"><button data-h="light">弱</button><button data-h="medium">中</button><button data-h="strong">強</button></div>';
     h += '<h3>音テスト</h3><div class="btns"><button data-s="fit">はまる</button><button data-s="wrong">違う枠</button><button data-s="letter">文字完成</button><button data-s="word">単語完成</button><button data-s="coin">コイン</button></div>';
     h += '<h3>その他</h3><div class="btns"><button id="devTut">チュートリアルをもう一度</button><button id="devCoins">コインを0に</button><button id="devNew">別の単語</button></div>';
@@ -44,6 +45,7 @@
     $('#devWord').value = cfg.WORD;
     $('#devMute').checked = cfg.MUTE;
     $('#devHaptics').checked = cfg.HAPTICS;
+    $('#devSilent').checked = cfg.SILENT_AUDIO;
   }
 
   function open() {
@@ -73,6 +75,7 @@
   $('#devOrient').addEventListener('change', function (e) { cfg.POOL_ORIENTATION = e.target.value; changed(true); });
   $('#devWord').addEventListener('change', function (e) { cfg.WORD = e.target.value; changed(false); WP.game.newWord(cfg.WORD === 'random' ? null : cfg.WORD); });
   $('#devMute').addEventListener('change', function (e) { cfg.MUTE = e.target.checked; changed(false); });
+  $('#devSilent').addEventListener('change', function (e) { cfg.SILENT_AUDIO = e.target.checked; changed(false); });
   $('#devHaptics').addEventListener('change', function (e) { cfg.HAPTICS = e.target.checked; changed(false); });
 
   dev.addEventListener('click', function (e) {

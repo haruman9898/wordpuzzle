@@ -113,7 +113,9 @@
     letters.forEach(function (L, li) {
       var tx = X - (L.bb.x - sw / 2 - gap / 2) * s, ty = cy - 50 * s;
       X += L.cellW * s;
-      L.g = el('g', { 'class': 'letter', transform: 'translate(' + tx + ' ' + ty + ') scale(' + s + ')' }, board);
+      // 位置は外側の g の transform 属性、アニメーションは内側の g（CSS の transform が属性を上書きするため分ける）
+      var outer = el('g', { transform: 'translate(' + tx + ' ' + ty + ') scale(' + s + ')' }, board);
+      L.g = el('g', { 'class': 'letter' }, outer);
       L.parts.forEach(function (p, pi) {
         var b = L.boxes[pi];
         var slot = { letter: li, type: p.t, d: p.d, box: b, filled: false, color: WP.COLORS[p.t],
@@ -429,7 +431,7 @@
     else { x = x1; y = y1; a = 1 - (T - 2000) / 600; }
     ghostEl.setAttribute('transform', 'translate(' + x + ' ' + y + ')');
     ghostEl.setAttribute('opacity', a);
-    board.appendChild(ghostEl);
+    if (board.lastChild !== ghostEl) board.appendChild(ghostEl);
   }
 
   // ---- フレームループ（FPS 計測・コイン・ゴースト） ----
@@ -439,8 +441,8 @@
     var dt = Math.min(dtMs, 50) / 1000;
     accT += dtMs; accN++; worst = Math.max(worst, dtMs);
     if (accT >= 500) {
-      var fps = accN * 1000 / accT; minFps = Math.min(minFps, fps);
-      WP.perf = { fps: Math.round(fps), minFps: Math.round(minFps), worstMs: Math.round(worst) };
+      var fps = accN * 1000 / accT; if (t > 2500) minFps = Math.min(minFps, fps); // 起動直後のカクつきは除く
+      WP.perf = { fps: Math.round(fps), minFps: minFps === 999 ? Math.round(fps) : Math.round(minFps), worstMs: Math.round(worst) };
       accT = 0; accN = 0; worst = 0;
     }
     stepCoins(dt, t); stepGhost(t);

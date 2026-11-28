@@ -46,7 +46,7 @@
       var b = c.createBuffer(1, 1, 22050), s = c.createBufferSource();
       s.buffer = b; s.connect(c.destination); s.start(0);
     } catch (e) {}
-    if (!silentEl) {
+    if (WP.cfg.SILENT_AUDIO && !silentEl) {
       try { silentEl = new Audio(silentWavUri()); silentEl.loop = true; silentEl.volume = 0.01; var p = silentEl.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
     }
   }

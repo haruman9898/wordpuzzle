@@ -20,6 +20,7 @@
     VOLUME: 0.7,
     MUTE: false,
     HAPTICS: true,
+    SILENT_AUDIO: true,         // サイレントスイッチ下でも鳴らすための無音 <audio> ループ（音楽が止まる副作用あり）
     WORD: 'random'              // 'random' か、特定の単語
   };
 

@@ -1,25 +1,26 @@
-const {launch,state,fitOne,drag} = require('./lib.js');
+// 1単語の通し（フリープレイ）: 実際のドラッグで全パーツをはめ、完成・コイン・次の単語を確認する
+const {launch,state,fitOne} = require('./lib.js');
+const OUT = process.env.OUT || '/tmp', URL = (process.env.URL||'http://localhost:8123')+'/index.html';
+const ok=(c,m)=>console.log((c?'PASS ':'FAIL ')+m);
 (async()=>{
   const {b,p,errs} = await launch();
-  await p.goto(''+(process.env.URL||'http://localhost:8123')+'/index.html');
-  await p.waitForTimeout(500);
-  await p.evaluate(()=>{WP.flow.freePlay(); WP.game.newWord('BIRD');});
+  await p.goto(URL); await p.waitForTimeout(500);
+  await p.evaluate(()=>{ WP.store.set('wp.tut','1'); WP.flow.freePlay(); WP.game.newWord('BIRD'); });
   await p.waitForTimeout(300);
   let st = await state(p);
-  console.log('word',st.word,'slots',st.slots.length,'pieces',st.pieces.length,'scale',st.s.toFixed(2),'W,H',st.W,st.H);
-  await p.screenshot({path:(process.env.OUT||'/tmp')+'/g1.png'});
-  // 全パーツをはめる
-  let n=0; while(await fitOne(p)) { n++; if(n===3) await p.screenshot({path:(process.env.OUT||'/tmp')+'/g2.png'}); if(n>20)break; }
+  ok(st.word==='BIRD' && st.slots.length===7 && st.pieces.length===7,'BIRD builds 7 slots / 7 pieces');
+  await p.screenshot({path:OUT+'/g1.png'});
+  let n=0; while(await fitOne(p)) { if(++n>20) break; }
   await p.waitForTimeout(250);
-  await p.screenshot({path:(process.env.OUT||'/tmp')+'/g3.png'});
   st = await state(p);
-  console.log('after fits: busy',st.busy,'combo',st.combo,'misses',st.misses,'filled',st.slots.filter(s=>s.filled).length,'/',st.slots.length);
-  await p.waitForTimeout(1200);
-  await p.screenshot({path:(process.env.OUT||'/tmp')+'/g4.png'});
-  await p.waitForTimeout(3500);
+  ok(st.slots.every(s=>s.filled),'all 7 slots filled by real drags');
+  ok(st.combo===7 && st.misses===0,'combo x7, no misses (combo='+st.combo+', misses='+st.misses+')');
+  ok(st.busy,'word-complete celebration is running');
+  await p.waitForTimeout(4600);
   st = await state(p);
-  console.log('after celebration: word',st.word,'coins',st.coins, 'busy', st.busy);
-  console.log('log:\n'+await p.evaluate(()=>WP.logText()));
-  console.log('errors',errs);
-  await b.close();
+  ok(st.coins===5,'5 coins arrived in the jar ('+st.coins+')');
+  ok(st.word!=='BIRD' && !st.busy,'next word started ('+st.word+')');
+  const log = await p.evaluate(()=>WP.log.entries.length);
+  ok(log===1,'play log has 1 entry');
+  console.log('errors',errs); await b.close();
 })();

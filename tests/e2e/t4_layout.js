@@ -14,7 +14,7 @@ const {launch} = require('./lib.js');
         out.push({w, s:+maxS.toFixed(2), maxOv, oob}); });
       return out; });
     const bad = res.filter(r=>r.maxOv>0||r.oob>0);
-    console.log(`${W}x${H}: words=${res.length} overlapping=${bad.length}`, bad.length?JSON.stringify(bad):'', 'scales', res.filter(r=>['IT','CAT','BIRD','APPLE'].includes(r.w)).map(r=>r.w+':'+r.s).join(' '));
+    console.log((bad.length?'FAIL ':'PASS ')+`no piece overlap/out-of-bounds ${W}x${H}: words=${res.length} overlapping=${bad.length}`, bad.length?JSON.stringify(bad):'', 'scales', res.filter(r=>['IT','CAT','BIRD','APPLE'].includes(r.w)).map(r=>r.w+':'+r.s).join(' '));
     console.log('errors',errs); await b.close();
   }
 })();

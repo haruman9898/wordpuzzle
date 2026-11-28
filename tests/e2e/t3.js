@@ -90,6 +90,20 @@ async function completeWord(p){ let n=0; while(n++<14){ const st=await state(p);
   ok(dup.letters===dup.d.word.length && dup.pieces===dup.d.slots.length,'no double build after retry mid-celebration (letters '+dup.letters+', pieces '+dup.pieces+')');
   ok((await flow(p)).idx===0 && (await flow(p)).state==='play','new run is at word 1, play state');
 
+  // 7b) 単語完成の演出中に裏へ回って、しばらく戻らない → 時間が飛ばず、一時停止になる
+  await p.evaluate(()=>WP.flow.startStage(1)); await waitPlay(p);
+  await completeWord(p); await p.waitForTimeout(150);
+  const hb = await flow(p);
+  await p.evaluate(()=>{ Object.defineProperty(document,'hidden',{value:true,configurable:true}); document.dispatchEvent(new Event('visibilitychange')); });
+  await p.waitForTimeout(3500);
+  const ha = await flow(p);
+  ok(ha.state==='paused','hidden during celebration -> paused when next word is ready (state='+ha.state+')');
+  ok(ha.elapsed-hb.elapsed<50,'timer did not jump while away (+'+Math.round(ha.elapsed-hb.elapsed)+'ms)');
+  await p.evaluate(()=>{ Object.defineProperty(document,'hidden',{value:false,configurable:true}); document.dispatchEvent(new Event('visibilitychange')); });
+  await p.click('#btnResume'); await p.waitForTimeout(400);
+  const hr = await flow(p);
+  ok(hr.state==='play' && hr.left>5,'resumes normally after returning (left='+(hr.left&&hr.left.toFixed(1))+')');
+
   // 8) 出題: 200回引いて、全て範囲内・重複なし
   const draw = await p.evaluate(()=>WP.STAGES.map(st=>{ let bad=0, rep=0, longBad=0; for(let i=0;i<200;i++){ const ws=WP.drawWords(st,[]); const tot=ws.reduce((a,w)=>a+WP.partsOf(w),0); if(tot<st.band[0]||tot>st.band[1]) bad++; if(new Set(ws).size!==ws.length) rep++; if(ws.length!==st.words) bad++; if(ws.filter(w=>w.length>=4).length<(st.minLong||0)) longBad++; } return {id:st.id,bad,rep,longBad}; }));
   draw.forEach(d=>ok(d.bad===0&&d.rep===0&&d.longBad===0,'stage '+d.id+': 200 draws all in band, distinct'));

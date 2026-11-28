@@ -81,6 +81,9 @@
     WP.game.show(run.words[run.idx], { animate: true, onReady: function () {
       if (g !== gen || !run) return;
       if (state === 'paused') { prevState = 'play'; return; } // 一時停止中に入場が終わった: 再開した時に始める
+      if (document.hidden) { // 裏に回っている間に入場が終わった: 時間は動かさず、戻った時に一時停止の画面から始める
+        prevState = 'play'; setState('paused'); WP.game.lock(true); showScreen('pause'); return;
+      }
       setState('play'); run.running = true; run.last = performance.now();
     } });
   }
@@ -158,7 +161,7 @@
   // ---- 毎フレーム（game.js の tick から呼ばれる） ----
   function tick(t) {
     if (!run || !run.running) return;
-    run.elapsed += t - run.last; run.last = t;
+    run.elapsed += Math.min(t - run.last, 250); run.last = t; // 上限 250ms: 裏に回った等で飛んでも、一気に減らさない
     var left = timeLeft();
     renderTime();
     if (left <= 10 && !run.warned) { run.warned = true; WP.audio.warn(); }
@@ -191,8 +194,15 @@
   on('#btnQuit', goSelect);
   pauseBtn.addEventListener('click', function () { WP.audio.unlock(); pause(); });
   // アプリが裏に回った・コントロールセンターを開いた時は、時間を止める
-  document.addEventListener('visibilitychange', function () { if (document.hidden) pause(); });
-  window.addEventListener('pagehide', pause);
+  function onHide() {
+    if (WP.audio.bgm) WP.audio.bgm(false); // どの状態でも、裏に回ったら BGM を止める
+    pause();
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { onHide(); return; }
+    if (run && (state === 'intro' || state === 'enter' || state === 'play' || state === 'celebrate') && WP.audio.bgm) WP.audio.bgm(true);
+  });
+  window.addEventListener('pagehide', onHide);
 
   WP.flow = {
     tick: tick, goTitle: goTitle, goSelect: goSelect, startStage: startStage, freePlay: freePlay, pause: pause, resume: resume,

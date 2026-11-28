@@ -19,6 +19,8 @@
     STROKE: 12,                 // 線の太さ（座標単位。承認済み = 12）
     POOL_ORIENTATION: 'matched',// 'matched' = 枠と同じ形 / 'canonical' = 型ごとの標準形
     VOLUME: 0.7,
+    BGM: true,                  // BGM（ミュートとは別に切れる）
+    BGM_VOL: 0.6,
     MUTE: false,
     HAPTICS: true,
     IOS_HAPTIC: 'label-onscreen', // iPhone の振動方式（開発メニューで切り替え）

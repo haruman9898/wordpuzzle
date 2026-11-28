@@ -5,5 +5,8 @@
 
 ```
 python3 -m http.server 8123 &          # リポジトリのルートで
-cd tests/e2e && OUT=/tmp node t1.js && OUT=/tmp node t2.js
+cd tests/e2e && for t in t1 t2 t3 t4_layout; do OUT=/tmp node $t.js; done
 ```
+
+- `t1` 1単語の通し / `t2` 間違い・入れ替え・ヒント・保存・標準形 / `t3` ステージ構造（タイマー・星・失敗・一時停止・世代のずれ・出題の範囲） / `t4_layout` パーツ置き場の重なり検査
+- 手触り・振動・音の質は、このテストでは分からない（ユーザーの iPhone で確認する）。

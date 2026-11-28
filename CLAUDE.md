@@ -12,16 +12,16 @@
 
 ## 守ること
 - 仕様の食い違いや、仕様にない追加は、勝手に決めずに報告する。仕様書の更新は Muse の担当。決定事項は `docs/spec/decisions.md` に追記する。
-- 数値の調整から始めない。まず小さく作って触って確かめる（1単語の手触り確認版 → ステージ1〜3）。
+- 数値の調整から始めない。まず小さく作って触って確かめる（手触り確認版 → ステージ1〜3 の試作 → 調整）。
 - 調整用の定数（制限時間、星の境界、BONUS_SECONDS、HINT_DELAY_SEC、SNAP_RADIUS、DRAG_OFFSET_Y、POOL_ORIENTATION）はコード冒頭にまとめる。
 - ビルドツールを使わない静的な HTML/CSS/JS。音は Web Audio で合成（音声ファイルなし）。
 - 振動が効かない環境でも、音と演出だけで成立させる。エラーにしない。
 - `localStorage` の読み書きは try/catch で守る。
 
 ## ファイル構成
-- `index.html` / `style.css` / `js/` — 手触り確認版（`config` 定数・`letters` 文字データ・`audio`・`haptics`・`game`・`dev`）
-- JS / CSS を変えたら、`index.html` の `?v=` と `WP.BUILD`（例 `proto1-a`）を全部同じ新しい値に置き換える（iPhone のキャッシュ対策）。
-- `tests/e2e/` — Playwright の動作確認（`README.md` 参照）
+- `index.html` / `style.css` / `js/` — `config` 定数、`letters` 文字データ、`stages` ステージ・出題・星・進行の保存、`audio`、`haptics`、`fx` 演出（コイン・火花・揺れ）、`game` 盤面（ドラッグ・吸着・はめる）、`flow` 画面遷移・タイマー、`dev` 開発メニュー
+- JS / CSS を変えたら、`index.html` の `?v=` と `WP.BUILD`（例 `proto2-a`）を全部同じ新しい値に置き換える（iPhone のキャッシュ対策）。
+- `tests/e2e/` — Playwright の動作確認（`README.md` 参照）。時間のかかる処理は、世代番号（`gen`）を確かめてから実行する。CSS アニメーションは、`transform` 属性を持つ要素にかけない（属性が上書きされる）。
 - `.github/workflows/pages.yml` — `main` への push で GitHub Pages に公開（サイト用ファイルだけを集めて公開する）
 
 ## 検証の限界

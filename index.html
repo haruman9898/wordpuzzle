@@ -6,12 +6,15 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f6f4ef">
 <title>文字パズル 試作</title>
-<link rel="stylesheet" href="style.css?v=proto1-a">
+<link rel="stylesheet" href="style.css?v=proto2-a">
 </head>
 <body>
 <div id="app">
   <header id="top">
-    <button id="gear" type="button" aria-label="開発メニュー">⚙</button>
+    <div class="lbtns">
+      <button id="pauseBtn" type="button" aria-label="一時停止">⏸</button>
+      <button id="gear" type="button" aria-label="開発メニュー">⚙</button>
+    </div>
     <div id="center"><pre id="diag"></pre><div id="combo"></div></div>
     <div id="jar" aria-label="コイン">
       <svg id="jarSvg" viewBox="0 0 44 56" width="40" height="50">
@@ -21,22 +24,89 @@
       <span id="coinCount">0</span>
     </div>
   </header>
+  <div id="strip">
+    <span id="stageLabel">STAGE 1</span>
+    <span id="dots"></span>
+    <div id="bar"><i id="barFill"></i></div>
+    <span id="secs">20.0</span>
+  </div>
   <main id="stage">
     <svg id="board" xmlns="http://www.w3.org/2000/svg"></svg>
     <div id="banner"></div>
   </main>
   <div id="safeProbe"></div>
 </div>
+
+<div id="screens">
+  <section id="scrTitle" class="scr opaque" hidden>
+    <div class="deco" aria-hidden="true"><span>A</span><span>B</span><span>C</span></div>
+    <h1 class="logo">文字パズル<small>（仮）</small></h1>
+    <p class="lead">パーツをはめて、単語をつくろう</p>
+    <button id="btnPlay" class="big" type="button">あそぶ</button>
+    <button id="btnTitleDev" class="ghost" type="button">⚙ 開発メニュー</button>
+    <p id="ver" class="ver"></p>
+  </section>
+
+  <section id="scrSelect" class="scr opaque" hidden>
+    <h2 class="ttl">ステージをえらぶ</h2>
+    <div id="cards"></div>
+    <div class="selfoot">
+      <button id="btnSelBack" class="ghost" type="button">← もどる</button>
+      <span id="selCoins" class="coinsum"></span>
+    </div>
+  </section>
+
+  <section id="scrResult" class="scr veil" hidden>
+    <div class="card">
+      <h2 id="resTitle">STAGE CLEAR!</h2>
+      <div id="resStars"></div>
+      <p id="resTime"></p>
+      <p id="resBest"></p>
+      <p id="resCoins"></p>
+      <p id="resNote" class="note"></p>
+      <div class="col">
+        <button id="btnNext" class="big" type="button">次のステージ</button>
+        <button id="btnRetry" class="mid" type="button">もう一回</button>
+        <button id="btnToSelect" class="ghost" type="button">ステージ選択</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="scrFail" class="scr veil" hidden>
+    <div class="card small">
+      <h2>TIME UP</h2>
+      <p class="note">おしい！もう一度やってみよう</p>
+      <div class="col">
+        <button id="btnFailRetry" class="big" type="button">もう一回</button>
+        <button id="btnFailSelect" class="ghost" type="button">ステージ選択</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="scrPause" class="scr veil solid" hidden>
+    <div class="card small">
+      <h2>一時停止</h2>
+      <div class="col">
+        <button id="btnResume" class="big" type="button">つづける</button>
+        <button id="btnQuit" class="ghost" type="button">やめる</button>
+      </div>
+    </div>
+  </section>
+</div>
+
 <canvas id="fx"></canvas>
 <section id="dev" hidden></section>
 <div id="rotate"><p>縦向きにしてください</p></div>
 
-<script>window.WP={BUILD:'proto1-a'};</script>
-<script src="js/config.js?v=proto1-a"></script>
-<script src="js/letters.js?v=proto1-a"></script>
-<script src="js/audio.js?v=proto1-a"></script>
-<script src="js/haptics.js?v=proto1-a"></script>
-<script src="js/game.js?v=proto1-a"></script>
-<script src="js/dev.js?v=proto1-a"></script>
+<script>window.WP={BUILD:'proto2-a'};</script>
+<script src="js/config.js?v=proto2-a"></script>
+<script src="js/letters.js?v=proto2-a"></script>
+<script src="js/stages.js?v=proto2-a"></script>
+<script src="js/audio.js?v=proto2-a"></script>
+<script src="js/haptics.js?v=proto2-a"></script>
+<script src="js/fx.js?v=proto2-a"></script>
+<script src="js/game.js?v=proto2-a"></script>
+<script src="js/flow.js?v=proto2-a"></script>
+<script src="js/dev.js?v=proto2-a"></script>
 </body>
 </html>

@@ -1,14 +1,13 @@
-/* ゲーム本体（手触り確認版）: 1単語を作る → 完成したら次の単語、を繰り返す。
-   タイマー・星・ステージ選択はまだ入れない（ステージ1〜3の試作で追加）。 */
+/* 盤面（1単語ぶん）: 枠とパーツの生成、ドラッグ・吸着・はめる、ヒント、チュートリアル。
+   ステージ・タイマー・画面の切り替えは flow.js が担当し、ここは WP.game の関数を呼ばれる側。 */
 (function () {
   'use strict';
   var WP = window.WP, cfg = WP.cfg;
   var NS = 'http://www.w3.org/2000/svg';
   var $ = function (s) { return document.querySelector(s); };
 
-  var stageEl = $('#stage'), board = $('#board'), fx = $('#fx'), fxc = fx.getContext('2d');
-  var comboEl = $('#combo'), bannerEl = $('#banner'), coinCountEl = $('#coinCount');
-  var jarEl = $('#jar'), jarDiscs = $('#jarDiscs'), safeProbe = $('#safeProbe');
+  var stageEl = $('#stage'), board = $('#board');
+  var comboEl = $('#combo'), bannerEl = $('#banner'), safeProbe = $('#safeProbe');
 
   function el(tag, attrs, parent) {
     var e = document.createElementNS(NS, tag);
@@ -28,16 +27,14 @@
   }
 
   // ---- 状態 ----
-  var W = 0, H = 0, dpr = 1;
+  var W = 0, H = 0, buildGen = 0;
   var cur = null;          // 現在の単語 {text, letters, slots, pieces, ...}
   var drag = null;
   var combo = 0;
   var busy = false;        // 単語完成の演出中
-  var hintTimer = null, hintPiece = null;
+  var hintTimer = null, hintPiece = null, hintSlot = null;
   var lastWord = null;
-  var coins = Number(WP.store.get('wp.coins', '0')) || 0;
   var tutorialActive = WP.store.get('wp.tut', '0') !== '1';
-  var coinFx = [];
   var ghostEl = null;
   WP.perf = { fps: 0, minFps: 0, worstMs: 0 };
   WP.log = { entries: [], sessionStart: Date.now() };
@@ -57,20 +54,10 @@
   }
   function restartClass(node, cls) { node.classList.remove(cls); void node.getBoundingClientRect(); node.classList.add(cls); }
 
-  // ---- コイン（瓶） ----
-  function renderJar() {
-    coinCountEl.textContent = String(coins);
-    var n = Math.min(coins, 10), html = '';
-    for (var i = 0; i < n; i++) {
-      var cx = 22 + ((i % 3) - 1) * 5, cy = 48 - i * 3.4;
-      html += '<ellipse cx="' + cx + '" cy="' + cy + '" rx="9" ry="3.6" fill="#f6c542" stroke="#c58f12" stroke-width="1.4"/>';
-    }
-    jarDiscs.innerHTML = html;
-  }
-
   // ---- 単語の組み立て ----
   function clearBoard() {
     stopHint(); stopGhostEl();
+    if (cur && cur.enterTween) cur.enterTween.cancel = true;
     while (board.firstChild) board.removeChild(board.firstChild);
     cur = null; drag = null;
   }
@@ -78,11 +65,8 @@
   function measureLayout() {
     var r = stageEl.getBoundingClientRect();
     W = Math.round(r.width); H = Math.round(r.height);
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
     board.setAttribute('width', W); board.setAttribute('height', H);
     board.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-    fx.width = Math.round(window.innerWidth * dpr); fx.height = Math.round(window.innerHeight * dpr);
-    fxc.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   function pickWord() {
@@ -91,7 +75,7 @@
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
-  function buildWord(text) {
+  function buildWord(text, opts) {
     clearBoard();
     measureLayout();
     lastWord = text;
@@ -105,10 +89,21 @@
       letters.push({ ch: ch, parts: parts, boxes: boxes, bb: bb, cellW: bb.w + sw + gap, slots: [] });
     }
     var total = letters.reduce(function (a, l) { return a + l.cellW; }, 0);
-    var wordArea = Math.max(130, H * 0.30);
-    var s = Math.min((W - 32) / total, (wordArea * 0.9) / (80 + sw), 1.5);
+    var wordArea = Math.max(140, H * 0.33);
+    var maxS = text.length <= 2 ? 2.0 : text.length === 3 ? 1.75 : 1.5;
+    var s = Math.min((W - 32) / total, (wordArea * 0.9) / (80 + sw), maxS);
+    // パーツ置き場に重ならずに収まるか、実際に置いてみる。収まらなければ少し縮める
+    var safeB = parseFloat(getComputedStyle(safeProbe).paddingBottom) || 0;
+    var poolTop = wordArea + 30, poolBottom = H - safeB - 16;
+    var specs = [];
+    letters.forEach(function (L) { L.parts.forEach(function (pt, pi) { specs.push(pieceSpec(pt, L.boxes[pi])); }); });
+    var layout = null;
+    for (var guard = 0; guard < 14 && !layout; guard++) { layout = packPieces(specs, s, sw, poolTop, poolBottom, 6); if (!layout) s *= 0.95; }
+    if (!layout) layout = packPieces(specs, s, sw, poolTop, poolBottom, -8); // 最後の手段: 少し重なっても置く
     var X = (W - total * s) / 2, cy = wordArea * 0.5 + 6;
 
+    el('rect', { x: 16, y: 10, width: W - 32, height: wordArea, rx: 26, fill: 'rgba(0,0,0,.05)' }, board);
+    el('rect', { x: 14, y: 6, width: W - 28, height: wordArea, rx: 26, fill: 'rgba(255,255,255,.78)', stroke: '#e8e3d6', 'stroke-width': 2 }, board);
     var slots = [];
     letters.forEach(function (L, li) {
       var tx = X - (L.bb.x - sw / 2 - gap / 2) * s, ty = cy - 50 * s;
@@ -122,56 +117,87 @@
                      cx: tx + s * (b.x + b.w / 2), cy: ty + s * (b.y + b.h / 2) };
         slot.slotEl = el('path', { 'class': 'slot', d: p.d, 'stroke-width': sw }, L.g);
         slot.fillEl = el('path', { 'class': 'fill', d: p.d, 'stroke-width': sw, stroke: slot.color }, L.g);
+        el('path', { 'class': 'fillhi', d: p.d, 'stroke-width': sw * 0.28, transform: 'translate(-1.6 -1.8)' }, L.g);
         L.slots.push(slot); slots.push(slot);
       });
     });
 
     cur = { text: text, letters: letters, slots: slots, pieces: [], s: s, sw: sw, wordArea: wordArea,
             t0: now(), lastFit: now(), fits: [], misses: 0, hints: 0, done: false,
-            orient: cfg.POOL_ORIENTATION };
+            orient: cfg.POOL_ORIENTATION, gen: ++buildGen, entering: false, layout: layout, poolTop: poolTop, poolBottom: poolBottom };
     buildPool();
     combo = 0; updateCombo();
+    if (opts && opts.animate) enter(cur, opts.onReady); else if (opts && opts.onReady) opts.onReady();
     restartHint();
     if (tutorialActive && !drag) startGhost();
   }
 
+  // パーツが画面の下から飛んでくる（入場）。終わるまでは掴めない。
+  function enter(c, onReady) {
+    c.entering = true;
+    var n = c.pieces.length, STAG = 55, DUR = 430, total = DUR + STAG * (n - 1);
+    c.pieces.forEach(function (p) { p.sy = H + p.h; setPos(p, p.hx, p.sy); });
+    c.enterTween = tween(total, function (t) {
+      var ms = t * total;
+      c.pieces.forEach(function (p, i) {
+        var u = clamp((ms - i * STAG) / DUR, 0, 1);
+        setPos(p, p.hx, p.sy + (p.hy - p.sy) * easeOutBack(u));
+      });
+    }, function () { if (cur !== c) return; c.entering = false; if (onReady) onReady(); });
+  }
+
+  // パーツの見た目（matched = 枠と同じ形 / canonical = 型ごとの標準形）
+  function pieceSpec(part, slotBox) {
+    if (cfg.POOL_ORIENTATION === 'canonical') { var d = WP.CANON[part.t]; return { d: d, box: bboxOf(d) }; }
+    return { d: part.d, box: slotBox };
+  }
+
+  // パーツ置き場に、重ならないように置く。置けなければ null
+  function packPieces(specs, s, sw, top, bottom, margin) {
+    var items = specs.map(function (sp, i) { return { i: i, w: (sp.box.w + sw) * s, h: (sp.box.h + sw) * s }; });
+    items.sort(function (a, b) { return b.w * b.h - a.w * a.h; }); // 大きいものから
+    var placed = [], out = [];
+    for (var k = 0; k < items.length; k++) {
+      var it = items[k], ok = false, x, y;
+      for (var tries = 0; tries < 500 && !ok; tries++) {
+        x = 16 + it.w / 2 + Math.random() * Math.max(0, W - 32 - it.w);
+        y = top + it.h / 2 + Math.random() * Math.max(0, bottom - top - it.h);
+        ok = placed.every(function (q) { return Math.abs(x - q.x) > (it.w + q.w) / 2 + margin || Math.abs(y - q.y) > (it.h + q.h) / 2 + margin; });
+      }
+      if (!ok) { if (margin >= 0) return null; }
+      placed.push({ x: x, y: y, w: it.w, h: it.h }); out[it.i] = { x: x, y: y };
+    }
+    return out;
+  }
+
   function buildPool() {
     var s = cur.s, sw = cur.sw;
-    var safeBottom = parseFloat(getComputedStyle(safeProbe).paddingBottom) || 0;
-    var top = cur.wordArea + 30, bottom = H - safeBottom - 16;
     var pieces = cur.slots.map(function (slot, i) {
-      var d, box;
-      if (cfg.POOL_ORIENTATION === 'canonical') { d = WP.CANON[slot.type]; box = bboxOf(d); }
-      else { d = slot.d; box = slot.box; }
-      return { slot: i, type: slot.type, d: d, box: box, color: slot.color, locked: false,
+      var sp = pieceSpec({ t: slot.type, d: slot.d }, slot.box), box = sp.box;
+      return { slot: i, type: slot.type, d: sp.d, box: box, color: slot.color, locked: false,
+               hx: cur.layout[i].x, hy: cur.layout[i].y,
                w: (box.w + sw) * s, h: (box.h + sw) * s, cx: box.x + box.w / 2, cy: box.y + box.h / 2 };
-    });
-    // 大きいパーツから重ならないように置く
-    var order = pieces.slice().sort(function (a, b) { return b.w * b.h - a.w * a.h; });
-    var placed = [];
-    order.forEach(function (p) {
-      var ok = false, margin = 10, tries = 0, x, y;
-      while (!ok && tries < 900) {
-        if (tries === 300) margin = 3; if (tries === 600) margin = -6;
-        tries++;
-        x = 16 + p.w / 2 + Math.random() * Math.max(0, W - 32 - p.w);
-        y = top + p.h / 2 + Math.random() * Math.max(0, bottom - top - p.h);
-        ok = placed.every(function (q) { return Math.abs(x - q.x) > (p.w + q.w) / 2 + margin || Math.abs(y - q.y) > (p.h + q.h) / 2 + margin; });
-      }
-      p.hx = x; p.hy = y; placed.push({ x: x, y: y, w: p.w, h: p.h });
     });
     // 見た目の重なり順をばらす
     pieces.slice().sort(function () { return Math.random() - 0.5; }).forEach(function (p) {
       p.g = el('g', { 'class': 'piece' }, board);
-      p.inner = el('g', { 'class': 'pinner' }, p.g);
+      p.tilt = el('g', {}, p.g);                    // 傾きは属性で指定（CSS の transform と混ぜない）
+      p.inner = el('g', { 'class': 'pinner' }, p.tilt);
+      p.angle = 0;
       el('path', { 'class': 'pshadow', d: p.d, 'stroke-width': sw }, p.inner);
       p.pathEl = el('path', { 'class': 'pp', d: p.d, 'stroke-width': sw, stroke: p.color }, p.inner);
+      el('path', { 'class': 'phi', d: p.d, 'stroke-width': sw * 0.28, transform: 'translate(-1.6 -1.8)' }, p.inner);
       var len = p.pathEl.getTotalLength(), n = Math.max(2, Math.ceil(len / 4));
       p.pts = [];
       for (var i = 0; i <= n; i++) { var pt = p.pathEl.getPointAtLength(len * i / n); p.pts.push([pt.x, pt.y]); }
       setPos(p, p.hx, p.hy);
     });
     cur.pieces = pieces;
+  }
+
+  function setAngle(p, a) {
+    p.angle = a;
+    p.tilt.setAttribute('transform', a ? 'rotate(' + a.toFixed(2) + ' ' + p.cx + ' ' + p.cy + ')' : '');
   }
 
   function setPos(p, x, y) {
@@ -210,7 +236,7 @@
 
   board.addEventListener('pointerdown', function (e) {
     WP.audio.unlock();
-    if (busy || drag || !cur) return;
+    if (busy || drag || !cur || cur.entering) return;
     var pt = pointerPos(e), p = hitPiece(pt);
     if (!p) return;
     e.preventDefault();
@@ -220,6 +246,7 @@
     p.inner.style.opacity = 1;
     p.g.parentNode.appendChild(p.g);
     p.g.classList.add('lifted');
+    if (cfg.HAPTIC_ON_GRAB) WP.haptic('light');
     drag = { p: p, id: e.pointerId, t0: now(), dx: p.x - pt.x, dy: p.y - pt.y, pt: pt, snap: null, wrong: false };
     updateDrag();
   });
@@ -241,8 +268,19 @@
     var x = d.pt.x + d.dx * (1 - ease), y = d.pt.y + d.dy * (1 - ease) - cfg.DRAG_OFFSET_Y * ease;
     x = clamp(x, 8, W - 8); y = clamp(y, 8, H - 8);
 
+    // 動いた速さに合わせて、少し傾ける（生き物のような手触り）
+    var tn = now(), dtv = Math.max(8, tn - (d.tLast || tn)), vx = d.xLast == null ? 0 : (x - d.xLast) / dtv * 1000;
+    d.tLast = tn; d.xLast = x;
+    var targetA = clamp(vx * 0.03, -13, 13);
+    setAngle(p, p.angle + (targetA - p.angle) * 0.3);
+
     var c = nearest(x, y, function (sl) { return sl.type === p.type; });
     var cand = (c.slot && c.d < cfg.SNAP_RADIUS) ? c.slot : null;
+    // 吸着範囲に近づくと、枠のほうへ少し引き寄せられる（磁石）。吸着の判定は指の位置のまま
+    if (!cand && c.slot && c.d < cfg.SNAP_RADIUS * 1.8) {
+      var pull = Math.pow(1 - c.d / (cfg.SNAP_RADIUS * 1.8), 2) * 0.45;
+      x += (c.slot.cx - x) * pull; y += (c.slot.cy - y) * pull;
+    }
     if (cand !== d.snap) {
       if (d.snap) d.snap.fillEl.classList.remove('ghost');
       d.snap = cand;
@@ -255,7 +293,7 @@
     if (wrongNow && !d.wrong) { restartClass(p.inner, 'wobble'); WP.audio.wrong(); }
     d.wrong = wrongNow;
 
-    if (cand) setPos(p, cand.cx, cand.cy); else setPos(p, x, y);
+    if (cand) { setAngle(p, 0); setPos(p, cand.cx, cand.cy); } else setPos(p, x, y);
   }
 
   function endDrag(cancel) {
@@ -273,10 +311,11 @@
   }
 
   function returnHome(p) {
-    var x0 = p.x, y0 = p.y;
+    var x0 = p.x, y0 = p.y, a0 = p.angle;
     p.anim = tween(300, function (t) {
       var e = easeOutBack(t);
       setPos(p, x0 + (p.hx - x0) * e, y0 + (p.hy - y0) * e);
+      setAngle(p, a0 * (1 - Math.min(1, t * 1.6)));
     });
   }
 
@@ -296,12 +335,20 @@
 
     WP.audio.fit(combo);
     WP.haptic(wordDone ? 'strong' : letterDone ? 'medium' : 'light'); // pointerup の中で同期的に
-    if (letterDone) { restartClass(L.g, 'bounce'); if (!wordDone) WP.audio.letter(); }
+    WP.fx.ring(slot.cx, slot.cy, slot.color, 46); WP.fx.burst(slot.cx, slot.cy, slot.color, 9);
+    if (letterDone) {
+      restartClass(L.g, 'bounce');
+      var lx = 0, ly = 0; L.slots.forEach(function (q) { lx += q.cx; ly += q.cy; });
+      WP.fx.ring(lx / L.slots.length, ly / L.slots.length, slot.color, 90); WP.fx.burst(lx / L.slots.length, ly / L.slots.length, slot.color, 10);
+      if (!wordDone) WP.audio.letter();
+    }
     if (wordDone) completeWord();
   }
 
   function updateCombo() {
     comboEl.textContent = combo >= 2 ? 'COMBO ×' + combo : '';
+    comboEl.style.fontSize = (19 + Math.min(combo, 10) * 1.3) + 'px';
+    comboEl.style.color = combo >= 8 ? '#e8a100' : combo >= 5 ? '#a23b72' : '#e4572e';
     if (combo >= 2) restartClass(comboEl, 'pop');
   }
 
@@ -312,69 +359,29 @@
     stageEl.appendChild(n);
   }
 
-  // ---- 単語完成 ----
+  // ---- 単語完成（その後の流れ=次の単語・結果画面は flow.js が決める） ----
   function completeWord() {
     busy = true; cur.done = true; stopHint(); stopGhostEl();
     var ms = Math.round(now() - cur.t0), perfect = cur.misses === 0;
     var avg = cur.fits.length ? Math.round(cur.fits.reduce(function (a, b) { return a + b; }, 0) / cur.fits.length) : 0;
-    WP.log.entries.push({ word: cur.text, orient: cur.orient, parts: cur.slots.length, ms: ms, avgFit: avg,
-                          maxFit: Math.max.apply(null, cur.fits), misses: cur.misses, hints: cur.hints, perfect: perfect, fits: cur.fits.slice() });
+    var entry = { word: cur.text, orient: cur.orient, parts: cur.slots.length, ms: ms, avgFit: avg,
+                  maxFit: Math.max.apply(null, cur.fits), misses: cur.misses, hints: cur.hints, perfect: perfect, fits: cur.fits.slice() };
+    WP.log.entries.push(entry);
     cur.letters.forEach(function (L, i) { L.g.style.animationDelay = (i * 0.12) + 's'; restartClass(L.g, 'jump'); });
     WP.audio.word();
+    WP.fx.shake();
+    var myCur = cur, cols = ['#e4572e', '#2e86ab', '#e8b100', '#6aa332', '#a23b72'];
+    cur.letters.forEach(function (L, i) {
+      setTimeout(function () {
+        if (cur !== myCur) return;
+        var lx = 0, ly = 0; L.slots.forEach(function (q) { lx += q.cx; ly += q.cy; });
+        WP.fx.burst(lx / L.slots.length, ly / L.slots.length - 20, cols[i % cols.length], 12);
+      }, i * 120);
+    });
     bannerEl.textContent = perfect ? 'PERFECT!' : 'NICE!';
     restartClass(bannerEl, 'show');
-    spawnCoins(cfg.COINS_PER_WORD);
-    setTimeout(function () {
-      cur.letters.forEach(function (L) { L.g.style.animationDelay = ''; });
-      busy = false; buildWord(pickWord());
-    }, 2400);
-  }
-
-  // ---- コインの演出（単語完成で降ってきて、瓶に溜まる） ----
-  function spawnCoins(n) {
-    var sr = stageEl.getBoundingClientRect(), jr = jarEl.getBoundingClientRect();
-    var jx = jr.left + jr.width * 0.3, jy = jr.top + jr.height * 0.5, t = now();
-    for (var i = 0; i < n; i++) {
-      coinFx.push({ state: 'wait', at: t + i * 110, x: 30 + Math.random() * (window.innerWidth - 60), y: -30, vy: 0,
-                    ly: sr.top + sr.height * (0.38 + Math.random() * 0.35), bounces: 0, spin: Math.random() * 6, jx: jx, jy: jy, r: 15 });
-    }
-  }
-  function drawCoin(c) {
-    fxc.save(); fxc.translate(c.x, c.y);
-    var k = c.scale == null ? 1 : c.scale;
-    fxc.scale(Math.max(0.15, Math.abs(Math.cos(c.spin))) * k, k);
-    fxc.beginPath(); fxc.arc(0, 0, c.r, 0, Math.PI * 2);
-    fxc.fillStyle = '#f6c542'; fxc.fill(); fxc.lineWidth = 2.5; fxc.strokeStyle = '#c58f12'; fxc.stroke();
-    fxc.beginPath(); fxc.arc(0, 0, c.r * 0.62, 0, Math.PI * 2); fxc.lineWidth = 1.6; fxc.strokeStyle = 'rgba(197,143,18,.8)'; fxc.stroke();
-    fxc.fillStyle = 'rgba(255,255,255,.55)'; fxc.beginPath(); fxc.ellipse(-c.r * 0.3, -c.r * 0.35, c.r * 0.25, c.r * 0.12, -0.6, 0, Math.PI * 2); fxc.fill();
-    fxc.restore();
-  }
-  function stepCoins(dt, t) {
-    if (!coinFx.length) { return; }
-    fxc.clearRect(0, 0, window.innerWidth, window.innerHeight);
-    for (var i = coinFx.length - 1; i >= 0; i--) {
-      var c = coinFx[i];
-      if (c.state === 'wait') { if (t >= c.at) c.state = 'fall'; else continue; }
-      if (c.state === 'fall') {
-        c.vy += 1700 * dt; c.y += c.vy * dt; c.spin += dt * 9;
-        if (c.y >= c.ly) {
-          c.y = c.ly; c.vy *= -0.42; c.bounces++; WP.audio.coinLand();
-          if (c.bounces >= 2) { c.state = 'rest'; c.restAt = t; }
-        }
-      } else if (c.state === 'rest') {
-        c.spin += dt * 3;
-        if (t - c.restAt > 450) { c.state = 'fly'; c.flyAt = t; c.fx = c.x; c.fy = c.y; }
-      } else if (c.state === 'fly') {
-        var u = clamp((t - c.flyAt) / 520, 0, 1), e = u * u * u;
-        c.x = c.fx + (c.jx - c.fx) * e; c.y = c.fy + (c.jy - c.fy) * e; c.spin += dt * 12; c.scale = 1 - 0.45 * u;
-        if (u >= 1) {
-          coins++; WP.store.set('wp.coins', String(coins)); renderJar(); restartClass(jarEl, 'pop'); WP.audio.coin();
-          coinFx.splice(i, 1); continue;
-        }
-      }
-      drawCoin(c);
-    }
-    if (!coinFx.length) fxc.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    WP.fx.coins(cfg.COINS_PER_WORD);
+    if (WP.game.onWordComplete) WP.game.onWordComplete(entry);
   }
 
   // ---- ヒント: 操作が止まったら、はまるパーツが震える ----
@@ -400,10 +407,12 @@
     var p = pieceFor(t); if (!p) return;
     stopHint();
     p.inner.classList.add('shake'); hintPiece = p; cur.hints++;
+    t.slotEl.classList.add('pulse'); hintSlot = t;
   }
   function stopHint() {
     clearTimeout(hintTimer); hintTimer = null;
     if (hintPiece) { hintPiece.inner.classList.remove('shake'); hintPiece = null; }
+    if (hintSlot) { hintSlot.slotEl.classList.remove('pulse'); hintSlot = null; }
   }
   function restartHint() {
     stopHint();
@@ -445,7 +454,8 @@
       WP.perf = { fps: Math.round(fps), minFps: minFps === 999 ? Math.round(fps) : Math.round(minFps), worstMs: Math.round(worst) };
       accT = 0; accN = 0; worst = 0;
     }
-    stepCoins(dt, t); stepGhost(t);
+    WP.fx.step(dt, t); stepGhost(t);
+    if (WP.flow && WP.flow.tick) WP.flow.tick(t);
     requestAnimationFrame(tick);
   }
 
@@ -458,22 +468,33 @@
     lines.push('画面: ' + window.innerWidth + 'x' + window.innerHeight + ' @' + (window.devicePixelRatio || 1) + 'x');
     lines.push('振動: ' + WP.hapticMode() + ' / 音: ' + WP.audio.state() + ' / FPS: ' + WP.perf.fps + ' (最小 ' + WP.perf.minFps + ', 最悪フレーム ' + WP.perf.worstMs + 'ms)');
     lines.push('設定: ' + cfgStr);
-    lines.push('コイン: ' + coins + ' / 完成した単語: ' + WP.log.entries.length);
+    lines.push('コイン: ' + WP.fx.coinTotal() + ' / 完成した単語: ' + WP.log.entries.length);
     WP.log.entries.forEach(function (e, i) {
       lines.push((i + 1) + '. ' + e.word + ' [' + e.orient + '] ' + e.parts + 'パーツ ' + (e.ms / 1000).toFixed(1) + '秒 / 平均はめ ' + e.avgFit + 'ms (最大 ' + e.maxFit + 'ms) / ミス ' + e.misses + ' / ヒント ' + e.hints + (e.perfect ? ' / PERFECT' : ''));
     });
     return lines.join('\n');
   };
 
-  // ---- 公開 ----
+  // ---- 公開（flow.js・dev.js・テストから呼ぶ） ----
+  function slideIn() {
+    board.classList.remove('out'); board.classList.add('pre'); void board.offsetWidth; board.classList.remove('pre');
+  }
   WP.game = {
-    rebuild: function () { if (!busy) buildWord(cur ? cur.text : pickWord()); },
-    newWord: function (w) { if (!busy) buildWord(w || pickWord()); },
+    show: function (text, opts) { busy = false; if (opts && opts.animate) slideIn(); buildWord(text, opts); },
+    newWord: function (w) { WP.game.show(w || pickWord(), { animate: false }); },
+    pickWord: pickWord,
+    exit: function (cb) { board.classList.add('out'); setTimeout(cb, 290); },
+    clear: function () { clearBoard(); busy = false; board.classList.remove('out'); },
+    lock: function (b) { busy = !!b; },
+    cancelDrag: function () { if (drag) endDrag(true); },
+    resetCombo: function () { combo = 0; updateCombo(); },
+    rebuild: function () { if (cur && !busy) buildWord(cur.text, { animate: false }); },
     resetTutorial: function () { WP.store.set('wp.tut', '0'); tutorialActive = true; if (cur && !busy) startGhost(); },
-    resetCoins: function () { coins = 0; WP.store.set('wp.coins', '0'); renderJar(); },
+    resetCoins: function () { WP.fx.resetCoins(); },
     clearLog: function () { WP.log.entries = []; },
+    onWordComplete: null,
     debug: function () {
-      return { word: cur && cur.text, combo: combo, busy: busy, coins: coins, misses: cur && cur.misses, hints: cur && cur.hints,
+      return { word: cur && cur.text, combo: combo, busy: busy, entering: cur && cur.entering, coins: WP.fx.coinTotal(), misses: cur && cur.misses, hints: cur && cur.hints,
                W: W, H: H, s: cur && cur.s,
                slots: cur && cur.slots.map(function (s) { return { type: s.type, x: s.cx, y: s.cy, filled: s.filled, letter: s.letter }; }),
                pieces: cur && cur.pieces.map(function (p) { return { type: p.type, x: p.x, y: p.y, hx: p.hx, hy: p.hy, locked: p.locked, w: p.w, h: p.h, shaking: p === hintPiece }; }) };
@@ -481,10 +502,8 @@
   };
 
   function init() {
-    renderJar();
-    buildWord(pickWord());
     var rt;
-    window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (!busy && !drag) buildWord(cur ? cur.text : pickWord()); }, 200); });
+    window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (cur && !busy && !drag && !cur.entering) buildWord(cur.text, { animate: false }); }, 200); });
     // iPhone のスクロール・ピンチ・ゴムバンドを止める（開発メニューの中だけはスクロールできる）
     document.addEventListener('touchmove', function (e) { if (!e.target.closest || !e.target.closest('#dev')) e.preventDefault(); }, { passive: false });
     ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (n) { document.addEventListener(n, function (e) { e.preventDefault(); }); });
